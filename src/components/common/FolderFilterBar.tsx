@@ -10,7 +10,8 @@ import {
 } from 'react-native';
 import { Folder } from '../../types';
 import { useApp } from '../../context/AppContext';
-import { Input, Button } from '../common';
+import { Input } from './Input';
+import { Button } from './Button';
 
 interface FolderFilterBarProps {
   selectedFolderId: string | null;
