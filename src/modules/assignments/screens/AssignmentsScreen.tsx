@@ -5,21 +5,22 @@ import {
   ScrollView,
   Text,
   TouchableOpacity,
-  FlatList,
+  Modal,
+  Alert,
 } from 'react-native';
 import { useApp } from '../../../context/AppContext';
-import { Classroom, Course, SeatAssignment, Gender } from '../../../types';
+import { Classroom, Course, SeatAssignment, Gender, Folder } from '../../../types';
 import {
   Header,
   Button,
-  Badge,
-  FolderFilterBar,
+  Input,
   TexturedBackground,
 } from '../../../components/common';
 import { SeatGrid } from '../../classrooms/components/SeatGrid';
 import { SeatAssignmentModal } from '../components/SeatAssignmentModal';
 import { OccupancySummary } from '../components/OccupancySummary';
 import { StudentVisualList } from '../components/StudentVisualList';
+import { FolderAccordionItem } from '../components/FolderAccordionItem';
 
 interface AssignmentsScreenProps {
   initialCourseId?: string;
@@ -33,6 +34,8 @@ export const AssignmentsScreen: React.FC<AssignmentsScreenProps> = ({
     classrooms,
     folders,
     assignments,
+    addFolder,
+    deleteFolder,
     assignSeat,
     unassignSeatByPosition,
     themeColors,
@@ -41,13 +44,21 @@ export const AssignmentsScreen: React.FC<AssignmentsScreenProps> = ({
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(
     initialCourseId || null
   );
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
 
-  // Modo de vista dentro del curso: 'map' (Mapa visual) o 'students' (Lista visual de alumnos)
+  // Carpetas expandidas/desplegadas (guarda el id de la carpeta abierta)
+  const [expandedFolderIds, setExpandedFolderIds] = useState<{ [id: string]: boolean }>({
+    'folder-1': true, // Primera carpeta abierta por defecto
+  });
+
+  // Modal para crear nueva carpeta
+  const [folderModalVisible, setFolderModalVisible] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+
+  // Modo de vista dentro del curso seleccionado: 'map' o 'students'
   const [viewMode, setViewMode] = useState<'map' | 'students'>('map');
 
   // Estado del modal de pupitre
-  const [modalVisible, setModalVisible] = useState(false);
+  const [seatModalVisible, setSeatModalVisible] = useState(false);
   const [activeSeat, setActiveSeat] = useState<{
     seatNumber: number;
     row: number;
@@ -60,7 +71,7 @@ export const AssignmentsScreen: React.FC<AssignmentsScreenProps> = ({
     ? classrooms.find((cl) => cl.id === selectedCourse.classroomId) || null
     : null;
 
-  // Asignaciones para el curso y aula seleccionada
+  // Asignaciones del curso y aula actual
   const currentAssignments =
     selectedCourse && selectedClassroom
       ? assignments.filter(
@@ -70,6 +81,38 @@ export const AssignmentsScreen: React.FC<AssignmentsScreenProps> = ({
         )
       : [];
 
+  const toggleFolder = (folderId: string) => {
+    setExpandedFolderIds((prev) => ({
+      ...prev,
+      [folderId]: !prev[folderId],
+    }));
+  };
+
+  const handleCreateFolder = () => {
+    if (!newFolderName.trim()) {
+      Alert.alert('Campo requerido', 'Ingresa el nombre de la carpeta');
+      return;
+    }
+    addFolder(newFolderName.trim());
+    setNewFolderName('');
+    setFolderModalVisible(false);
+  };
+
+  const handleDeleteFolder = (folder: Folder) => {
+    Alert.alert(
+      'Eliminar Carpeta',
+      `¿Deseas eliminar la carpeta "${folder.name}"? Los cursos no se borrarán, solo quedarán sin carpeta.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: () => deleteFolder(folder.id),
+        },
+      ]
+    );
+  };
+
   const handleSeatClick = (
     seatNumber: number,
     row: number,
@@ -77,7 +120,7 @@ export const AssignmentsScreen: React.FC<AssignmentsScreenProps> = ({
     assignment?: SeatAssignment
   ) => {
     setActiveSeat({ seatNumber, row, col, assignment });
-    setModalVisible(true);
+    setSeatModalVisible(true);
   };
 
   const handleSaveAssignment = (studentName: string, gender: Gender) => {
@@ -103,12 +146,10 @@ export const AssignmentsScreen: React.FC<AssignmentsScreenProps> = ({
     );
   };
 
-  // Filtrar cursos por carpeta
-  const displayedCourses = selectedFolderId
-    ? courses.filter((c) => c.folderId === selectedFolderId)
-    : courses;
+  // Cursos que no tienen carpeta asignada
+  const uncategorizedCourses = courses.filter((c) => !c.folderId);
 
-  // VISTA 1: Selector de Curso inicial con Carpetas
+  // VISTA 1: Carpetas Desplegables con sus Clases
   if (!selectedCourse) {
     return (
       <View
@@ -121,123 +162,114 @@ export const AssignmentsScreen: React.FC<AssignmentsScreenProps> = ({
 
         <Header
           title="Asignación de Clases"
-          subtitle="Selecciona un curso para ver su aula y pupitres"
+          subtitle="Toca una carpeta para desplegar y acceder a sus clases"
+          rightActionText="+ Carpeta"
+          onRightActionPress={() => setFolderModalVisible(true)}
         />
 
-        {/* Filtro por carpetas */}
-        <FolderFilterBar
-          selectedFolderId={selectedFolderId}
-          onSelectFolder={setSelectedFolderId}
-        />
-
-        <FlatList
-          data={displayedCourses}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          renderItem={({ item }) => {
-            const linkedRoom = classrooms.find(
-              (c) => c.id === item.classroomId
-            );
-            const courseFolder = folders.find((f) => f.id === item.folderId);
-            const courseAssignments = assignments.filter(
-              (a) => a.courseId === item.id
-            );
+        <ScrollView contentContainerStyle={styles.scrollList}>
+          {/* Carpetas creadas por el usuario */}
+          {folders.map((folder) => {
+            const folderCourses = courses.filter((c) => c.folderId === folder.id);
+            const isExpanded = Boolean(expandedFolderIds[folder.id]);
 
             return (
-              <TouchableOpacity
-                style={[
-                  styles.courseCard,
-                  {
-                    backgroundColor: themeColors.surface,
-                    borderColor: themeColors.border,
-                  },
-                ]}
-                onPress={() => setSelectedCourseId(item.id)}
-                activeOpacity={0.8}
-              >
-                <View
-                  style={[styles.courseColorBar, { backgroundColor: item.color }]}
-                />
-                <View style={styles.courseCardBody}>
-                  <View style={styles.courseCardHeader}>
-                    <View style={styles.courseMainInfo}>
-                      <Text
-                        style={[styles.courseName, { color: themeColors.text }]}
-                      >
-                        {item.name}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.courseCode,
-                          { color: themeColors.textMuted },
-                        ]}
-                      >
-                        {item.code} • 👨‍🏫 {item.teacher}
-                      </Text>
-                    </View>
-                    <Text style={[styles.arrow, { color: themeColors.primary }]}>
-                      Entrar →
-                    </Text>
-                  </View>
-
-                  <View
-                    style={[
-                      styles.courseFooter,
-                      { borderTopColor: themeColors.border },
-                    ]}
-                  >
-                    <View style={styles.badgesRow}>
-                      {linkedRoom ? (
-                        <Badge
-                          label={`🏛️ ${linkedRoom.name}`}
-                          variant="primary"
-                        />
-                      ) : (
-                        <Badge label="⚠️ Sin Aula" variant="neutral" />
-                      )}
-
-                      {courseFolder ? (
-                        <Badge
-                          label={`📁 ${courseFolder.name}`}
-                          variant="secondary"
-                        />
-                      ) : null}
-                    </View>
-
-                    <Text
-                      style={[
-                        styles.occupancyBadge,
-                        { color: themeColors.textMuted },
-                      ]}
-                    >
-                      {courseAssignments.length} alumnos
-                    </Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
+              <FolderAccordionItem
+                key={folder.id}
+                folder={folder}
+                courses={folderCourses}
+                classrooms={classrooms}
+                assignments={assignments}
+                isExpanded={isExpanded}
+                onToggle={() => toggleFolder(folder.id)}
+                onSelectCourse={(courseId) => setSelectedCourseId(courseId)}
+                onDeleteFolder={() => handleDeleteFolder(folder)}
+              />
             );
-          }}
-          ListEmptyComponent={
+          })}
+
+          {/* Carpeta para Cursos sin carpeta */}
+          {uncategorizedCourses.length > 0 && (
+            <FolderAccordionItem
+              key="uncategorized"
+              folder={{ id: 'uncategorized', name: 'General / Sin Carpeta', isDefault: true }}
+              courses={uncategorizedCourses}
+              classrooms={classrooms}
+              assignments={assignments}
+              isExpanded={Boolean(expandedFolderIds['uncategorized'])}
+              onToggle={() => toggleFolder('uncategorized')}
+              onSelectCourse={(courseId) => setSelectedCourseId(courseId)}
+            />
+          )}
+
+          {folders.length === 0 && uncategorizedCourses.length === 0 && (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>📚</Text>
+              <Text style={styles.emptyIcon}>📁</Text>
               <Text style={[styles.emptyTitle, { color: themeColors.text }]}>
-                {selectedFolderId
-                  ? 'No hay cursos en esta carpeta'
-                  : 'No hay cursos disponibles'}
+                No hay carpetas ni cursos
               </Text>
               <Text style={[styles.emptyText, { color: themeColors.textMuted }]}>
-                {selectedFolderId
-                  ? 'Selecciona "Todas las Carpetas" o edita un curso para moverlo aquí.'
-                  : 'Crea primero un curso en la pestaña "Cursos" para empezar.'}
+                Pulsa en "+ Carpeta" para crear tu primera carpeta organizadora.
               </Text>
+              <Button
+                title="Crear Nueva Carpeta"
+                onPress={() => setFolderModalVisible(true)}
+              />
             </View>
-          }
-        />
+          )}
+        </ScrollView>
+
+        {/* Modal para crear nueva carpeta */}
+        <Modal visible={folderModalVisible} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View
+              style={[
+                styles.modalBox,
+                { backgroundColor: themeColors.surface },
+              ]}
+            >
+              <Text style={[styles.modalBoxTitle, { color: themeColors.text }]}>
+                📁 Crear Nueva Carpeta
+              </Text>
+              <Text
+                style={[styles.modalBoxSubtitle, { color: themeColors.textMuted }]}
+              >
+                Organiza tus asignaturas por grupos, grados o semestres.
+              </Text>
+
+              <Input
+                label="Nombre de la Carpeta"
+                placeholder="Ej: DAM 1º Año, Grado Medio, Tarde..."
+                value={newFolderName}
+                onChangeText={setNewFolderName}
+                autoFocus
+              />
+
+              <View style={styles.modalButtons}>
+                <Button
+                  title="Cancelar"
+                  variant="outline"
+                  onPress={() => {
+                    setNewFolderName('');
+                    setFolderModalVisible(false);
+                  }}
+                  style={styles.modalBtn}
+                />
+                <Button
+                  title="Crear Carpeta"
+                  variant="primary"
+                  onPress={handleCreateFolder}
+                  style={styles.modalBtn}
+                />
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
     );
   }
 
-  // VISTA 2: Si el curso seleccionado no tiene aula
+  // VISTA 2: Si el curso seleccionado no tiene aula física
   if (!selectedClassroom) {
     return (
       <View
@@ -251,20 +283,20 @@ export const AssignmentsScreen: React.FC<AssignmentsScreenProps> = ({
         <Header
           title={selectedCourse.name}
           subtitle="Curso sin aula física"
-          rightActionText="← Volver"
+          rightActionText="← Carpetas"
           onRightActionPress={() => setSelectedCourseId(null)}
         />
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyIcon}>🏛️</Text>
           <Text style={[styles.emptyTitle, { color: themeColors.text }]}>
-            Este curso no tiene aula asignada
+            Este curso no tiene aula física asignada
           </Text>
           <Text style={[styles.emptyText, { color: themeColors.textMuted }]}>
             Ve a la pestaña "Cursos", edita "{selectedCourse.name}" y selecciónale
             un aula física con pupitres.
           </Text>
           <Button
-            title="Volver a Seleccionar Curso"
+            title="Volver a las Carpetas"
             onPress={() => setSelectedCourseId(null)}
           />
         </View>
@@ -272,7 +304,7 @@ export const AssignmentsScreen: React.FC<AssignmentsScreenProps> = ({
     );
   }
 
-  // VISTA 3: Aula interactiva del curso seleccionado
+  // VISTA 3: Aula interactiva de la clase seleccionada
   return (
     <View
       style={[
@@ -285,11 +317,11 @@ export const AssignmentsScreen: React.FC<AssignmentsScreenProps> = ({
       <Header
         title={selectedCourse.name}
         subtitle={`Aula: ${selectedClassroom.name} (${selectedClassroom.code})`}
-        rightActionText="← Cursos"
+        rightActionText="← Carpetas"
         onRightActionPress={() => setSelectedCourseId(null)}
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={styles.scrollList}>
         {/* Barra de progreso de ocupación */}
         <OccupancySummary
           totalSeats={selectedClassroom.totalSeats}
@@ -357,7 +389,7 @@ export const AssignmentsScreen: React.FC<AssignmentsScreenProps> = ({
           </TouchableOpacity>
         </View>
 
-        {/* Renderizado condicional según modo */}
+        {/* Renderizado según modo seleccionado */}
         {viewMode === 'map' ? (
           <View style={styles.gridSection}>
             <SeatGrid
@@ -385,7 +417,7 @@ export const AssignmentsScreen: React.FC<AssignmentsScreenProps> = ({
 
       {/* Modal para asignar o editar alumno en pupitre */}
       <SeatAssignmentModal
-        visible={modalVisible}
+        visible={seatModalVisible}
         seatNumber={activeSeat?.seatNumber ?? null}
         row={activeSeat?.row ?? null}
         col={activeSeat?.col ?? null}
@@ -393,7 +425,7 @@ export const AssignmentsScreen: React.FC<AssignmentsScreenProps> = ({
         classroomName={selectedClassroom.name}
         courseName={selectedCourse.name}
         onClose={() => {
-          setModalVisible(false);
+          setSeatModalVisible(false);
           setActiveSeat(null);
         }}
         onSave={handleSaveAssignment}
@@ -407,68 +439,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  listContent: {
+  scrollList: {
     padding: 16,
     paddingBottom: 40,
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  courseCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 12,
-    flexDirection: 'row',
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  courseColorBar: {
-    width: 6,
-  },
-  courseCardBody: {
-    flex: 1,
-    padding: 14,
-  },
-  courseCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  courseMainInfo: {
-    flex: 1,
-    marginRight: 8,
-  },
-  courseName: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  courseCode: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  arrow: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  courseFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 10,
-    borderTopWidth: 1,
-  },
-  badgesRow: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  occupancyBadge: {
-    fontSize: 12,
   },
   modeSwitch: {
     flexDirection: 'row',
@@ -508,5 +481,35 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
     lineHeight: 20,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalBox: {
+    width: '100%',
+    borderRadius: 16,
+    padding: 20,
+    maxWidth: 400,
+  },
+  modalBoxTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  modalBoxSubtitle: {
+    fontSize: 13,
+    marginBottom: 16,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  modalBtn: {
+    flex: 1,
   },
 });
