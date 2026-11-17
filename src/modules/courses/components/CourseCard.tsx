@@ -1,13 +1,14 @@
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { Course, Classroom } from '../../../types';
-import { colors } from '../../../theme';
+import { useApp } from '../../../context/AppContext';
 import { Badge } from '../../../components/common';
 
 interface CourseCardProps {
   course: Course;
   classroom?: Classroom;
   onPress: () => void;
+  onEdit?: () => void;
   onDelete?: () => void;
   onManageSeats?: () => void;
 }
@@ -16,50 +17,102 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   course,
   classroom,
   onPress,
+  onEdit,
   onDelete,
   onManageSeats,
 }) => {
+  const { themeColors } = useApp();
+
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
+    <TouchableOpacity
+      style={[
+        styles.card,
+        {
+          backgroundColor: themeColors.surface,
+          borderColor: themeColors.border,
+        },
+      ]}
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
       <View style={[styles.colorBar, { backgroundColor: course.color }]} />
       <View style={styles.content}>
         <View style={styles.headerRow}>
           <View style={styles.titleInfo}>
-            <Text style={styles.name}>{course.name}</Text>
-            <Text style={styles.code}>{course.code}</Text>
+            <Text style={[styles.name, { color: themeColors.text }]}>
+              {course.name}
+            </Text>
+            <Text style={[styles.code, { color: themeColors.textMuted }]}>
+              {course.code}
+            </Text>
           </View>
           {classroom ? (
-            <Badge label={`Aula: ${classroom.code}`} variant="secondary" />
+            <Badge label={`Aula: ${classroom.code}`} variant="primary" />
           ) : (
-            <Badge label="Sin Aula Asignada" variant="neutral" />
+            <Badge label="Sin Aula" variant="neutral" />
           )}
         </View>
 
         <View style={styles.detailsContainer}>
-          <Text style={styles.detailText}>👨‍🏫 {course.teacher}</Text>
-          <Text style={styles.detailText}>🕒 {course.schedule}</Text>
+          <Text style={[styles.detailText, { color: themeColors.text }]}>
+            👨‍🏫 {course.teacher}
+          </Text>
+          <Text style={[styles.detailText, { color: themeColors.textMuted }]}>
+            🕒 {course.schedule}
+          </Text>
         </View>
 
-        <View style={styles.footerRow}>
+        <View
+          style={[
+            styles.footerRow,
+            { borderTopColor: themeColors.border },
+          ]}
+        >
           {onManageSeats && (
             <TouchableOpacity
-              style={styles.actionSeatBtn}
+              style={[
+                styles.actionSeatBtn,
+                { backgroundColor: themeColors.primaryLight },
+              ]}
               onPress={onManageSeats}
               activeOpacity={0.7}
             >
-              <Text style={styles.actionSeatText}>🪑 Gestionar Asientos</Text>
+              <Text
+                style={[
+                  styles.actionSeatText,
+                  { color: themeColors.primaryDark },
+                ]}
+              >
+                🪑 Ver Clase y Asientos
+              </Text>
             </TouchableOpacity>
           )}
 
-          {onDelete ? (
-            <TouchableOpacity
-              style={styles.deleteButton}
-              onPress={onDelete}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.deleteText}>Eliminar</Text>
-            </TouchableOpacity>
-          ) : null}
+          <View style={styles.rightActions}>
+            {onEdit ? (
+              <TouchableOpacity
+                style={styles.actionBtn}
+                onPress={onEdit}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.editText, { color: themeColors.primary }]}>
+                  Editar
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+
+            {onDelete ? (
+              <TouchableOpacity
+                style={styles.actionBtn}
+                onPress={onDelete}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.deleteText, { color: themeColors.danger }]}>
+                  Eliminar
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
         </View>
       </View>
     </TouchableOpacity>
@@ -68,11 +121,9 @@ export const CourseCard: React.FC<CourseCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: 14,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: colors.border,
     flexDirection: 'row',
     overflow: 'hidden',
     shadowColor: '#000',
@@ -101,21 +152,18 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.text,
   },
   code: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.textMuted,
     marginTop: 2,
   },
   detailsContainer: {
     gap: 4,
-    marginVertical: 8,
+    marginVertical: 6,
   },
   detailText: {
     fontSize: 13,
-    color: colors.text,
   },
   footerRow: {
     flexDirection: 'row',
@@ -124,26 +172,30 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     marginTop: 6,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
   },
   actionSeatBtn: {
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 6,
   },
   actionSeatText: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.primaryDark,
   },
-  deleteButton: {
-    paddingHorizontal: 8,
+  rightActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionBtn: {
+    paddingHorizontal: 6,
     paddingVertical: 4,
+  },
+  editText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   deleteText: {
     fontSize: 12,
-    color: colors.danger,
     fontWeight: '600',
   },
 });

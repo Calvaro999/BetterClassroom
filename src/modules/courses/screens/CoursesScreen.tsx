@@ -7,8 +7,7 @@ import {
   Alert,
 } from 'react-native';
 import { useApp } from '../../../context/AppContext';
-import { Course, ActiveTab } from '../../../types';
-import { colors } from '../../../theme';
+import { Course } from '../../../types';
 import { Header, Button } from '../../../components/common';
 import { CourseCard } from '../components/CourseCard';
 import { CourseModal } from '../components/CourseModal';
@@ -20,7 +19,15 @@ interface CoursesScreenProps {
 export const CoursesScreen: React.FC<CoursesScreenProps> = ({
   onNavigateToAssignments,
 }) => {
-  const { courses, classrooms, addCourse, deleteCourse } = useApp();
+  const {
+    courses,
+    classrooms,
+    addCourse,
+    updateCourse,
+    deleteCourse,
+    themeColors,
+  } = useApp();
+
   const [modalVisible, setModalVisible] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
 
@@ -39,12 +46,22 @@ export const CoursesScreen: React.FC<CoursesScreenProps> = ({
     );
   };
 
+  const handleEdit = (course: Course) => {
+    setEditingCourse(course);
+    setModalVisible(true);
+  };
+
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: themeColors.background },
+      ]}
+    >
       <Header
-        title="Cursos y Clases"
+        title="Cursos y Materias"
         subtitle={`${courses.length} materias registradas`}
-        rightActionText="+ Crear Curso"
+        rightActionText="+ Nuevo Curso"
         onRightActionPress={() => {
           setEditingCourse(null);
           setModalVisible(true);
@@ -63,10 +80,8 @@ export const CoursesScreen: React.FC<CoursesScreenProps> = ({
             <CourseCard
               course={item}
               classroom={assignedClassroom}
-              onPress={() => {
-                setEditingCourse(item);
-                setModalVisible(true);
-              }}
+              onPress={() => handleEdit(item)}
+              onEdit={() => handleEdit(item)}
               onDelete={() => handleDelete(item)}
               onManageSeats={() => {
                 if (onNavigateToAssignments) {
@@ -79,9 +94,11 @@ export const CoursesScreen: React.FC<CoursesScreenProps> = ({
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>📚</Text>
-            <Text style={styles.emptyTitle}>No hay cursos registrados</Text>
-            <Text style={styles.emptyText}>
-              Crea tu primer curso y asígnalo a una de tus aulas con asientos.
+            <Text style={[styles.emptyTitle, { color: themeColors.text }]}>
+              No hay cursos registrados
+            </Text>
+            <Text style={[styles.emptyText, { color: themeColors.textMuted }]}>
+              Crea tu primer curso y vincúlalo a una de tus aulas.
             </Text>
             <Button
               title="Crear Nuevo Curso"
@@ -89,7 +106,6 @@ export const CoursesScreen: React.FC<CoursesScreenProps> = ({
                 setEditingCourse(null);
                 setModalVisible(true);
               }}
-              style={styles.emptyBtn}
             />
           </View>
         }
@@ -104,7 +120,11 @@ export const CoursesScreen: React.FC<CoursesScreenProps> = ({
           setEditingCourse(null);
         }}
         onSubmit={(data) => {
-          addCourse(data);
+          if (editingCourse) {
+            updateCourse(editingCourse.id, data);
+          } else {
+            addCourse(data);
+          }
         }}
       />
     </View>
@@ -114,7 +134,6 @@ export const CoursesScreen: React.FC<CoursesScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   listContent: {
     padding: 16,
@@ -133,17 +152,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: colors.text,
     marginBottom: 6,
   },
   emptyText: {
     fontSize: 14,
-    color: colors.textMuted,
     textAlign: 'center',
     marginBottom: 20,
     lineHeight: 20,
-  },
-  emptyBtn: {
-    paddingHorizontal: 24,
   },
 });
