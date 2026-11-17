@@ -90,3 +90,4 @@ npx expo start --android
 # Para abrir en navegador web
 npx expo start --web
 ```
+

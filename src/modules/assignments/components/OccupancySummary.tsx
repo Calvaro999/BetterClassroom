@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors } from '../../../theme';
+import { useApp } from '../../../context/AppContext';
 
 interface OccupancySummaryProps {
   totalSeats: number;
@@ -11,37 +11,75 @@ export const OccupancySummary: React.FC<OccupancySummaryProps> = ({
   totalSeats,
   occupiedSeats,
 }) => {
+  const { themeColors } = useApp();
   const freeSeats = Math.max(0, totalSeats - occupiedSeats);
   const percentage = totalSeats > 0 ? Math.round((occupiedSeats / totalSeats) * 100) : 0;
 
   return (
-    <View style={styles.card}>
+    <View
+      style={[
+        styles.card,
+        {
+          backgroundColor: themeColors.surface,
+          borderColor: themeColors.border,
+        },
+      ]}
+    >
       <View style={styles.header}>
-        <Text style={styles.title}>Ocupación del Aula</Text>
-        <Text style={styles.percentage}>{percentage}%</Text>
+        <Text style={[styles.title, { color: themeColors.text }]}>
+          Ocupación del Aula
+        </Text>
+        <Text style={[styles.percentage, { color: themeColors.primary }]}>
+          {percentage}%
+        </Text>
       </View>
 
-      {/* Barra de progreso */}
-      <View style={styles.progressBarBg}>
-        <View style={[styles.progressBarFill, { width: `${percentage}%` }]} />
+      <View
+        style={[
+          styles.progressBarBg,
+          { backgroundColor: themeColors.surfaceVariant },
+        ]}
+      >
+        <View
+          style={[
+            styles.progressBarFill,
+            { width: `${percentage}%`, backgroundColor: themeColors.primary },
+          ]}
+        />
       </View>
 
       <View style={styles.statsRow}>
         <View style={styles.statItem}>
-          <Text style={styles.statDotOccupied}>●</Text>
-          <Text style={styles.statLabel}>Ocupados:</Text>
-          <Text style={styles.statValue}>{occupiedSeats}</Text>
+          <Text style={[styles.statDotOccupied, { color: themeColors.danger }]}>
+            ●
+          </Text>
+          <Text style={[styles.statLabel, { color: themeColors.textMuted }]}>
+            Ocupados:
+          </Text>
+          <Text style={[styles.statValue, { color: themeColors.text }]}>
+            {occupiedSeats}
+          </Text>
         </View>
 
         <View style={styles.statItem}>
-          <Text style={styles.statDotFree}>●</Text>
-          <Text style={styles.statLabel}>Libres:</Text>
-          <Text style={styles.statValue}>{freeSeats}</Text>
+          <Text style={[styles.statDotFree, { color: themeColors.success }]}>
+            ●
+          </Text>
+          <Text style={[styles.statLabel, { color: themeColors.textMuted }]}>
+            Libres:
+          </Text>
+          <Text style={[styles.statValue, { color: themeColors.text }]}>
+            {freeSeats}
+          </Text>
         </View>
 
         <View style={styles.statItem}>
-          <Text style={styles.statLabel}>Total:</Text>
-          <Text style={styles.statValue}>{totalSeats}</Text>
+          <Text style={[styles.statLabel, { color: themeColors.textMuted }]}>
+            Total:
+          </Text>
+          <Text style={[styles.statValue, { color: themeColors.text }]}>
+            {totalSeats}
+          </Text>
         </View>
       </View>
     </View>
@@ -50,11 +88,9 @@ export const OccupancySummary: React.FC<OccupancySummaryProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
     padding: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.border,
     marginBottom: 16,
   },
   header: {
@@ -66,23 +102,19 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.text,
   },
   percentage: {
     fontSize: 14,
     fontWeight: '700',
-    color: colors.primary,
   },
   progressBarBg: {
     height: 8,
-    backgroundColor: colors.surfaceVariant,
     borderRadius: 4,
     overflow: 'hidden',
     marginBottom: 10,
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: colors.primary,
     borderRadius: 4,
   },
   statsRow: {
@@ -96,20 +128,16 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   statDotOccupied: {
-    color: colors.danger,
     fontSize: 14,
   },
   statDotFree: {
-    color: colors.success,
     fontSize: 14,
   },
   statLabel: {
     fontSize: 12,
-    color: colors.textMuted,
   },
   statValue: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.text,
   },
 });

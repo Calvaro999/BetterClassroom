@@ -8,12 +8,12 @@ import {
   FlatList,
 } from 'react-native';
 import { useApp } from '../../../context/AppContext';
-import { Classroom, Course, SeatAssignment } from '../../../types';
-import { colors } from '../../../theme';
+import { Classroom, Course, SeatAssignment, Gender } from '../../../types';
 import { Header, Button, Badge } from '../../../components/common';
 import { SeatGrid } from '../../classrooms/components/SeatGrid';
 import { SeatAssignmentModal } from '../components/SeatAssignmentModal';
 import { OccupancySummary } from '../components/OccupancySummary';
+import { StudentVisualList } from '../components/StudentVisualList';
 
 interface AssignmentsScreenProps {
   initialCourseId?: string;
@@ -28,25 +28,18 @@ export const AssignmentsScreen: React.FC<AssignmentsScreenProps> = ({
     assignments,
     assignSeat,
     unassignSeatByPosition,
+    themeColors,
   } = useApp();
 
-  const [selectedCourseId, setSelectedCourseId] = useState<string>(
-    initialCourseId || (courses[0]?.id ?? '')
+  // Si se pasó un ID inicial lo selecciona, sino muestra la lista de cursos primero
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(
+    initialCourseId || null
   );
 
-  const selectedCourse = courses.find((c) => c.id === selectedCourseId) || courses[0];
-  const selectedClassroom = classrooms.find(
-    (cl) => cl.id === selectedCourse?.classroomId
-  ) || classrooms[0];
+  // Modo de vista dentro del curso: 'map' (Mapa visual) o 'students' (Lista visual de alumnos)
+  const [viewMode, setViewMode] = useState<'map' | 'students'>('map');
 
-  // Asignaciones del curso y aula actual
-  const currentAssignments = assignments.filter(
-    (a) =>
-      a.courseId === selectedCourse?.id &&
-      a.classroomId === selectedClassroom?.id
-  );
-
-  // Estado del modal de asignación de asiento
+  // Estado del modal de pupitre
   const [modalVisible, setModalVisible] = useState(false);
   const [activeSeat, setActiveSeat] = useState<{
     seatNumber: number;
@@ -54,6 +47,21 @@ export const AssignmentsScreen: React.FC<AssignmentsScreenProps> = ({
     col: number;
     assignment?: SeatAssignment;
   } | null>(null);
+
+  const selectedCourse = courses.find((c) => c.id === selectedCourseId) || null;
+  const selectedClassroom = selectedCourse
+    ? classrooms.find((cl) => cl.id === selectedCourse.classroomId) || null
+    : null;
+
+  // Asignaciones para el curso y aula seleccionada
+  const currentAssignments =
+    selectedCourse && selectedClassroom
+      ? assignments.filter(
+          (a) =>
+            a.courseId === selectedCourse.id &&
+            a.classroomId === selectedClassroom.id
+        )
+      : [];
 
   const handleSeatClick = (
     seatNumber: number,
@@ -65,11 +73,7 @@ export const AssignmentsScreen: React.FC<AssignmentsScreenProps> = ({
     setModalVisible(true);
   };
 
-  const handleSaveAssignment = (
-    studentName: string,
-    studentId: string,
-    notes: string
-  ) => {
+  const handleSaveAssignment = (studentName: string, gender: Gender) => {
     if (!activeSeat || !selectedCourse || !selectedClassroom) return;
 
     assignSeat({
@@ -79,8 +83,7 @@ export const AssignmentsScreen: React.FC<AssignmentsScreenProps> = ({
       row: activeSeat.row,
       column: activeSeat.col,
       studentName,
-      studentId,
-      notes,
+      gender,
     });
   };
 
@@ -93,150 +96,256 @@ export const AssignmentsScreen: React.FC<AssignmentsScreenProps> = ({
     );
   };
 
+  // VISTA 1: Selector de Curso inicial (No muestra el mapa de golpe)
   if (!selectedCourse) {
     return (
-      <View style={styles.container}>
-        <Header title="Asignación de Asientos" />
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyIcon}>📚</Text>
-          <Text style={styles.emptyTitle}>No hay cursos disponibles</Text>
-          <Text style={styles.emptySubtitle}>
-            Crea primero un curso en la pestaña "Cursos" para empezar a asignar
-            asientos a tus alumnos.
-          </Text>
-        </View>
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: themeColors.background },
+        ]}
+      >
+        <Header
+          title="Asignación de Clases"
+          subtitle="Selecciona un curso para ver su aula y pupitres"
+        />
+
+        <FlatList
+          data={courses}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => {
+            const linkedRoom = classrooms.find(
+              (c) => c.id === item.classroomId
+            );
+            const courseAssignments = assignments.filter(
+              (a) => a.courseId === item.id
+            );
+
+            return (
+              <TouchableOpacity
+                style={[
+                  styles.courseCard,
+                  {
+                    backgroundColor: themeColors.surface,
+                    borderColor: themeColors.border,
+                  },
+                ]}
+                onPress={() => setSelectedCourseId(item.id)}
+                activeOpacity={0.8}
+              >
+                <View
+                  style={[styles.courseColorBar, { backgroundColor: item.color }]}
+                />
+                <View style={styles.courseCardBody}>
+                  <View style={styles.courseCardHeader}>
+                    <View style={styles.courseMainInfo}>
+                      <Text
+                        style={[styles.courseName, { color: themeColors.text }]}
+                      >
+                        {item.name}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.courseCode,
+                          { color: themeColors.textMuted },
+                        ]}
+                      >
+                        {item.code} • 👨‍🏫 {item.teacher}
+                      </Text>
+                    </View>
+                    <Text style={[styles.arrow, { color: themeColors.primary }]}>
+                      Entrar →
+                    </Text>
+                  </View>
+
+                  <View
+                    style={[
+                      styles.courseFooter,
+                      { borderTopColor: themeColors.border },
+                    ]}
+                  >
+                    {linkedRoom ? (
+                      <Badge
+                        label={`🏛️ ${linkedRoom.name} (${linkedRoom.totalSeats} pupitres)`}
+                        variant="primary"
+                      />
+                    ) : (
+                      <Badge label="⚠️ Sin Aula Asignada" variant="neutral" />
+                    )}
+
+                    <Text
+                      style={[
+                        styles.occupancyBadge,
+                        { color: themeColors.textMuted },
+                      ]}
+                    >
+                      {courseAssignments.length} alumnos asignados
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          }}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyIcon}>📚</Text>
+              <Text style={[styles.emptyTitle, { color: themeColors.text }]}>
+                No hay cursos disponibles
+              </Text>
+              <Text style={[styles.emptyText, { color: themeColors.textMuted }]}>
+                Crea primero un curso en la pestaña "Cursos" para empezar.
+              </Text>
+            </View>
+          }
+        />
       </View>
     );
   }
 
+  // VISTA 2: Si el curso seleccionado no tiene aula
   if (!selectedClassroom) {
     return (
-      <View style={styles.container}>
-        <Header title="Asignación de Asientos" />
-        <View style={styles.emptyState}>
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: themeColors.background },
+        ]}
+      >
+        <Header
+          title={selectedCourse.name}
+          subtitle="Curso sin aula física"
+          rightActionText="← Volver"
+          onRightActionPress={() => setSelectedCourseId(null)}
+        />
+        <View style={styles.emptyContainer}>
           <Text style={styles.emptyIcon}>🏛️</Text>
-          <Text style={styles.emptyTitle}>El curso no tiene aula vinculada</Text>
-          <Text style={styles.emptySubtitle}>
-            Edita el curso "{selectedCourse.name}" y selecciónale un aula para
-            ver la distribución de sus asientos.
+          <Text style={[styles.emptyTitle, { color: themeColors.text }]}>
+            Este curso no tiene aula asignada
           </Text>
+          <Text style={[styles.emptyText, { color: themeColors.textMuted }]}>
+            Ve a la pestaña "Cursos", edita "{selectedCourse.name}" y selecciónale
+            un aula física con pupitres.
+          </Text>
+          <Button
+            title="Volver a Seleccionar Curso"
+            onPress={() => setSelectedCourseId(null)}
+          />
         </View>
       </View>
     );
   }
 
+  // VISTA 3: Aula interactiva del curso seleccionado
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: themeColors.background },
+      ]}
+    >
       <Header
-        title="Asignación de Asientos"
-        subtitle={`${selectedCourse.name} • ${selectedClassroom.name}`}
+        title={selectedCourse.name}
+        subtitle={`Aula: ${selectedClassroom.name} (${selectedClassroom.code})`}
+        rightActionText="← Cursos"
+        onRightActionPress={() => setSelectedCourseId(null)}
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Selector horizontal de cursos */}
-        <Text style={styles.sectionLabel}>Seleccionar Curso:</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.coursesSelector}
-        >
-          {courses.map((course) => {
-            const isSelected = course.id === selectedCourse.id;
-            return (
-              <TouchableOpacity
-                key={course.id}
-                style={[
-                  styles.courseChip,
-                  isSelected ? styles.courseChipActive : null,
-                ]}
-                onPress={() => setSelectedCourseId(course.id)}
-                activeOpacity={0.7}
-              >
-                <View
-                  style={[styles.colorDot, { backgroundColor: course.color }]}
-                />
-                <Text
-                  style={[
-                    styles.courseChipText,
-                    isSelected ? styles.courseChipTextActive : null,
-                  ]}
-                >
-                  {course.code}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-
-        {/* Resumen de ocupación */}
+        {/* Barra de progreso de ocupación */}
         <OccupancySummary
           totalSeats={selectedClassroom.totalSeats}
           occupiedSeats={currentAssignments.length}
         />
 
-        {/* Mapa Interactivo de Asientos */}
-        <View style={styles.mapSection}>
-          <View style={styles.mapHeader}>
-            <Text style={styles.mapTitle}>Mapa de Asientos del Aula</Text>
-            <Text style={styles.mapHint}>Toca un asiento para asignar o ver</Text>
+        {/* Selector de modo: Mapa de Pupitres o Lista de Alumnos */}
+        <View
+          style={[
+            styles.modeSwitch,
+            {
+              backgroundColor: themeColors.surfaceVariant,
+              borderColor: themeColors.border,
+            },
+          ]}
+        >
+          <TouchableOpacity
+            style={[
+              styles.modeBtn,
+              viewMode === 'map'
+                ? { backgroundColor: themeColors.surface }
+                : null,
+            ]}
+            onPress={() => setViewMode('map')}
+          >
+            <Text
+              style={[
+                styles.modeBtnText,
+                {
+                  color:
+                    viewMode === 'map'
+                      ? themeColors.primary
+                      : themeColors.textMuted,
+                  fontWeight: viewMode === 'map' ? '700' : '500',
+                },
+              ]}
+            >
+              🏛️ Mapa del Aula
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.modeBtn,
+              viewMode === 'students'
+                ? { backgroundColor: themeColors.surface }
+                : null,
+            ]}
+            onPress={() => setViewMode('students')}
+          >
+            <Text
+              style={[
+                styles.modeBtnText,
+                {
+                  color:
+                    viewMode === 'students'
+                      ? themeColors.primary
+                      : themeColors.textMuted,
+                  fontWeight: viewMode === 'students' ? '700' : '500',
+                },
+              ]}
+            >
+              👥 Alumnos ({currentAssignments.length})
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Renderizado condicional según modo */}
+        {viewMode === 'map' ? (
+          <View style={styles.gridSection}>
+            <SeatGrid
+              classroom={selectedClassroom}
+              assignments={currentAssignments}
+              selectedSeatNumber={activeSeat?.seatNumber}
+              onSelectSeat={handleSeatClick}
+            />
           </View>
-          <SeatGrid
-            classroom={selectedClassroom}
+        ) : (
+          <StudentVisualList
             assignments={currentAssignments}
-            selectedSeatNumber={activeSeat?.seatNumber}
-            onSelectSeat={handleSeatClick}
+            course={selectedCourse}
+            onSelectStudent={(assignment) => {
+              handleSeatClick(
+                assignment.seatNumber,
+                assignment.row,
+                assignment.column,
+                assignment
+              );
+            }}
           />
-        </View>
-
-        {/* Lista de Alumnos Asignados */}
-        <View style={styles.listSection}>
-          <Text style={styles.listTitle}>
-            Alumnos Asignados ({currentAssignments.length})
-          </Text>
-
-          {currentAssignments.length === 0 ? (
-            <View style={styles.noStudentsBox}>
-              <Text style={styles.noStudentsText}>
-                No hay ningún alumno asignado a un asiento aún. Toca cualquier
-                asiento en el mapa de arriba para asignarlo.
-              </Text>
-            </View>
-          ) : (
-            currentAssignments.map((assignment) => (
-              <TouchableOpacity
-                key={assignment.id}
-                style={styles.studentItem}
-                onPress={() =>
-                  handleSeatClick(
-                    assignment.seatNumber,
-                    assignment.row,
-                    assignment.column,
-                    assignment
-                  )
-                }
-              >
-                <View style={styles.seatBadge}>
-                  <Text style={styles.seatBadgeText}>
-                    #{assignment.seatNumber}
-                  </Text>
-                </View>
-                <View style={styles.studentInfo}>
-                  <Text style={styles.studentName}>
-                    {assignment.studentName}
-                  </Text>
-                  <Text style={styles.studentMeta}>
-                    Fila {assignment.row}, Col {assignment.column}
-                    {assignment.studentId ? ` • ID: ${assignment.studentId}` : ''}
-                  </Text>
-                </View>
-                <Text style={styles.arrowIcon}>›</Text>
-              </TouchableOpacity>
-            ))
-          )}
-        </View>
+        )}
       </ScrollView>
 
-      {/* Modal para asignar alumno a asiento */}
+      {/* Modal para asignar o editar alumno en pupitre */}
       <SeatAssignmentModal
         visible={modalVisible}
         seatNumber={activeSeat?.seatNumber ?? null}
@@ -259,134 +368,89 @@ export const AssignmentsScreen: React.FC<AssignmentsScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+  },
+  listContent: {
+    padding: 16,
+    paddingBottom: 40,
   },
   scrollContent: {
     padding: 16,
     paddingBottom: 40,
   },
-  sectionLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 8,
-  },
-  coursesSelector: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 16,
-  },
-  courseChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
+  courseCard: {
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    gap: 6,
+    marginBottom: 12,
+    flexDirection: 'row',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  courseChipActive: {
-    backgroundColor: colors.primaryLight,
-    borderColor: colors.primary,
+  courseColorBar: {
+    width: 6,
   },
-  colorDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  courseCardBody: {
+    flex: 1,
+    padding: 14,
   },
-  courseChipText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textMuted,
-  },
-  courseChipTextActive: {
-    color: colors.primaryDark,
-    fontWeight: '700',
-  },
-  mapSection: {
-    marginBottom: 20,
-  },
-  mapHeader: {
+  courseCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'baseline',
-    marginBottom: 8,
-  },
-  mapTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  mapHint: {
-    fontSize: 11,
-    color: colors.textMuted,
-  },
-  listSection: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  listTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 12,
-  },
-  noStudentsBox: {
-    paddingVertical: 14,
     alignItems: 'center',
+    marginBottom: 10,
   },
-  noStudentsText: {
-    fontSize: 13,
-    color: colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  studentItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  seatBadge: {
-    backgroundColor: colors.dangerLight,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginRight: 12,
-  },
-  seatBadgeText: {
-    color: colors.danger,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  studentInfo: {
+  courseMainInfo: {
     flex: 1,
+    marginRight: 8,
   },
-  studentName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
+  courseName: {
+    fontSize: 16,
+    fontWeight: '700',
   },
-  studentMeta: {
+  courseCode: {
     fontSize: 12,
-    color: colors.textMuted,
     marginTop: 2,
   },
-  arrowIcon: {
-    fontSize: 18,
-    color: colors.textLight,
+  arrow: {
+    fontSize: 14,
+    fontWeight: '700',
   },
-  emptyState: {
+  courseFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 10,
+    borderTopWidth: 1,
+  },
+  occupancyBadge: {
+    fontSize: 12,
+  },
+  modeSwitch: {
+    flexDirection: 'row',
+    borderRadius: 10,
+    borderWidth: 1,
+    padding: 3,
+    marginBottom: 16,
+  },
+  modeBtn: {
     flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modeBtnText: {
+    fontSize: 13,
+  },
+  gridSection: {
+    marginBottom: 16,
+  },
+  emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 32,
+    padding: 40,
   },
   emptyIcon: {
     fontSize: 48,
@@ -395,13 +459,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: colors.text,
     marginBottom: 8,
   },
-  emptySubtitle: {
+  emptyText: {
     fontSize: 14,
-    color: colors.textMuted,
     textAlign: 'center',
+    marginBottom: 20,
     lineHeight: 20,
   },
 });

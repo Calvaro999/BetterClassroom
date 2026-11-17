@@ -7,9 +7,9 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { SeatAssignment } from '../../../types';
-import { colors } from '../../../theme';
-import { Button, Input, Badge } from '../../../components/common';
+import { SeatAssignment, Gender } from '../../../types';
+import { useApp } from '../../../context/AppContext';
+import { Button, Input } from '../../../components/common';
 
 interface SeatAssignmentModalProps {
   visible: boolean;
@@ -20,7 +20,7 @@ interface SeatAssignmentModalProps {
   classroomName: string;
   courseName: string;
   onClose: () => void;
-  onSave: (studentName: string, studentId: string, notes: string) => void;
+  onSave: (studentName: string, gender: Gender) => void;
   onUnassign: () => void;
 }
 
@@ -36,35 +36,33 @@ export const SeatAssignmentModal: React.FC<SeatAssignmentModalProps> = ({
   onSave,
   onUnassign,
 }) => {
+  const { themeColors } = useApp();
   const [studentName, setStudentName] = useState('');
-  const [studentId, setStudentId] = useState('');
-  const [notes, setNotes] = useState('');
+  const [gender, setGender] = useState<Gender>('Masculino');
 
   useEffect(() => {
     if (currentAssignment) {
-      setStudentName(currentAssignment.studentName);
-      setStudentId(currentAssignment.studentId || '');
-      setNotes(currentAssignment.notes || '');
+      setStudentName(currentAssignment.studentName || '');
+      setGender(currentAssignment.gender || 'Masculino');
     } else {
       setStudentName('');
-      setStudentId('');
-      setNotes('');
+      setGender('Masculino');
     }
   }, [currentAssignment, visible]);
 
   const handleSave = () => {
     if (!studentName.trim()) {
-      Alert.alert('Campo requerido', 'Por favor ingresa el nombre del alumno');
+      Alert.alert('Campo requerido', 'Ingresa el nombre del alumno');
       return;
     }
-    onSave(studentName.trim(), studentId.trim(), notes.trim());
+    onSave(studentName.trim(), gender);
     onClose();
   };
 
   const handleUnassignConfirm = () => {
     Alert.alert(
-      'Liberar Asiento',
-      `¿Deseas desocupar el asiento #${seatNumber} de ${currentAssignment?.studentName}?`,
+      'Liberar Pupitre',
+      `¿Deseas desocupar el pupitre #${seatNumber} de ${currentAssignment?.studentName}?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -82,62 +80,110 @@ export const SeatAssignmentModal: React.FC<SeatAssignmentModalProps> = ({
   return (
     <Modal visible={visible} animationType="slide" transparent>
       <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
+        <View
+          style={[
+            styles.modalContainer,
+            { backgroundColor: themeColors.surface },
+          ]}
+        >
+          <View
+            style={[
+              styles.modalHeader,
+              { borderBottomColor: themeColors.border },
+            ]}
+          >
             <View>
-              <Text style={styles.modalTitle}>
-                {currentAssignment ? 'Editar Asignación' : 'Asignar Asiento'}
+              <Text style={[styles.modalTitle, { color: themeColors.text }]}>
+                {currentAssignment ? 'Editar Alumno' : 'Asignar a Pupitre'}
               </Text>
-              <Text style={styles.seatMeta}>
-                Asiento #{seatNumber} • Fila {row}, Columna {col}
+              <Text style={[styles.seatMeta, { color: themeColors.primary }]}>
+                Pupitre #{seatNumber} • Fila {row}, Columna {col}
               </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Text style={styles.closeText}>✕</Text>
+              <Text style={[styles.closeText, { color: themeColors.textMuted }]}>
+                ✕
+              </Text>
             </TouchableOpacity>
           </View>
 
-          <View style={styles.contextInfo}>
-            <Text style={styles.contextLabel}>Curso:</Text>
-            <Text style={styles.contextValue}>{courseName}</Text>
-            <Text style={[styles.contextLabel, { marginTop: 4 }]}>Aula:</Text>
-            <Text style={styles.contextValue}>{classroomName}</Text>
+          <View
+            style={[
+              styles.contextInfo,
+              {
+                backgroundColor: themeColors.surfaceVariant,
+                borderBottomColor: themeColors.border,
+              },
+            ]}
+          >
+            <Text style={[styles.contextText, { color: themeColors.textMuted }]}>
+              Curso: <Text style={{ color: themeColors.text, fontWeight: '700' }}>{courseName}</Text> • Aula: <Text style={{ color: themeColors.text, fontWeight: '700' }}>{classroomName}</Text>
+            </Text>
           </View>
 
           <View style={styles.body}>
             <Input
               label="Nombre del Alumno"
-              placeholder="Ej: Laura Gómez..."
+              placeholder="Ej: Marcos Fernández..."
               value={studentName}
               onChangeText={setStudentName}
             />
 
-            <Input
-              label="Matrícula / ID del Alumno (Opcional)"
-              placeholder="Ej: ALU-2024-05"
-              value={studentId}
-              onChangeText={setStudentId}
-            />
-
-            <Input
-              label="Notas u Observaciones (Opcional)"
-              placeholder="Ej: Necesita estar cerca de la pizarra..."
-              value={notes}
-              onChangeText={setNotes}
-            />
+            <Text style={[styles.genderLabel, { color: themeColors.text }]}>
+              Género
+            </Text>
+            <View style={styles.genderRow}>
+              {(['Masculino', 'Femenino', 'Otro'] as Gender[]).map((g) => {
+                const isSelected = gender === g;
+                const icon = g === 'Masculino' ? '👨' : g === 'Femenino' ? '👩' : '🧑';
+                return (
+                  <TouchableOpacity
+                    key={g}
+                    style={[
+                      styles.genderChip,
+                      {
+                        backgroundColor: isSelected
+                          ? themeColors.primaryLight
+                          : themeColors.surfaceVariant,
+                        borderColor: isSelected
+                          ? themeColors.primary
+                          : themeColors.border,
+                      },
+                    ]}
+                    onPress={() => setGender(g)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.genderChipIcon}>{icon}</Text>
+                    <Text
+                      style={[
+                        styles.genderChipText,
+                        {
+                          color: isSelected
+                            ? themeColors.primaryDark
+                            : themeColors.text,
+                          fontWeight: isSelected ? '700' : '500',
+                        },
+                      ]}
+                    >
+                      {g}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
 
           <View style={styles.footer}>
             {currentAssignment ? (
               <Button
-                title="Liberar Asiento"
+                title="Liberar"
                 variant="danger"
                 onPress={handleUnassignConfirm}
                 style={styles.actionBtn}
               />
             ) : null}
             <Button
-              title={currentAssignment ? 'Actualizar' : 'Asignar Alumno'}
+              title={currentAssignment ? 'Actualizar' : 'Asignar Pupitre'}
               variant="primary"
               onPress={handleSave}
               style={styles.actionBtn}
@@ -156,7 +202,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: colors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingBottom: 24,
@@ -167,16 +212,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: colors.text,
   },
   seatMeta: {
     fontSize: 13,
-    color: colors.primary,
     fontWeight: '600',
     marginTop: 2,
   },
@@ -185,28 +227,43 @@ const styles = StyleSheet.create({
   },
   closeText: {
     fontSize: 18,
-    color: colors.textMuted,
   },
   contextInfo: {
-    backgroundColor: colors.surfaceVariant,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
-  contextLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.textMuted,
-    textTransform: 'uppercase',
-  },
-  contextValue: {
+  contextText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: colors.text,
   },
   body: {
     padding: 20,
+  },
+  genderLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  genderRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10,
+  },
+  genderChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    gap: 6,
+  },
+  genderChipIcon: {
+    fontSize: 16,
+  },
+  genderChipText: {
+    fontSize: 13,
   },
   footer: {
     flexDirection: 'row',
