@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   StyleSheet,
   View,
@@ -9,9 +9,11 @@ import {
   useWindowDimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { AppProvider, useApp } from './src/context/AppContext';
+import { AuthProvider, useAuth, LoginScreen } from './src/modules/auth';
 import { ClassroomsScreen } from './src/modules/classrooms';
 import { CoursesScreen } from './src/modules/courses';
 import { AssignmentsScreen } from './src/modules/assignments';
@@ -75,7 +77,7 @@ const MainApp: React.FC = () => {
     >
       <StatusBar style={isDarkMode ? 'light' : 'dark'} />
 
-      {/* Contenedor deslizante con el dedo entre pestañas (Swipeable Paging) */}
+      {/* Contenedor deslizante entre pestañas */}
       <View
         style={[
           styles.contentContainer,
@@ -120,10 +122,38 @@ const MainApp: React.FC = () => {
   );
 };
 
+// Componente que decide si mostrar Login o la App según la sesión
+const RootNavigator: React.FC = () => {
+  const { user, isGuest, isLoading } = useAuth();
+  const { themeColors } = useApp();
+
+  if (isLoading) {
+    return (
+      <View
+        style={[
+          styles.loadingContainer,
+          { backgroundColor: themeColors.background },
+        ]}
+      >
+        <ActivityIndicator size="large" color={themeColors.primary} />
+      </View>
+    );
+  }
+
+  // Si no ha iniciado sesión ni ha entrado como invitado, muestra pantalla de Login
+  if (!user && !isGuest) {
+    return <LoginScreen />;
+  }
+
+  return <MainApp />;
+};
+
 export default function App() {
   return (
     <AppProvider>
-      <MainApp />
+      <AuthProvider>
+        <RootNavigator />
+      </AuthProvider>
     </AppProvider>
   );
 }
@@ -137,5 +167,10 @@ const styles = StyleSheet.create({
   },
   pagerScrollView: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

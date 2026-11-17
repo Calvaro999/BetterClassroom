@@ -1,6 +1,7 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../modules/auth/context/AuthContext';
 
 interface HeaderProps {
   title: string;
@@ -16,6 +17,22 @@ export const Header: React.FC<HeaderProps> = ({
   onRightActionPress,
 }) => {
   const { themeColors, isDarkMode, toggleDarkMode } = useApp();
+  const { user, isGuest, signOut } = useAuth();
+
+  const handleSignOut = () => {
+    Alert.alert(
+      'Cerrar Sesión',
+      `¿Deseas salir de la cuenta (${user?.email || 'Modo Invitado'})?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Cerrar Sesión',
+          style: 'destructive',
+          onPress: () => signOut(),
+        },
+      ]
+    );
+  };
 
   return (
     <View
@@ -40,7 +57,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Botón de alternar Modo Oscuro / Claro */}
         <TouchableOpacity
           style={[
-            styles.themeToggleBtn,
+            styles.iconBtn,
             {
               backgroundColor: themeColors.surfaceVariant,
               borderColor: themeColors.border,
@@ -49,9 +66,24 @@ export const Header: React.FC<HeaderProps> = ({
           onPress={toggleDarkMode}
           activeOpacity={0.7}
         >
-          <Text style={styles.themeToggleIcon}>
+          <Text style={styles.iconText}>
             {isDarkMode ? '☀️' : '🌙'}
           </Text>
+        </TouchableOpacity>
+
+        {/* Botón de Cerrar Sesión / Perfil */}
+        <TouchableOpacity
+          style={[
+            styles.iconBtn,
+            {
+              backgroundColor: themeColors.surfaceVariant,
+              borderColor: themeColors.border,
+            },
+          ]}
+          onPress={handleSignOut}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.iconText}>🚪</Text>
         </TouchableOpacity>
 
         {rightActionText && onRightActionPress ? (
@@ -98,7 +130,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  themeToggleBtn: {
+  iconBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -106,8 +138,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  themeToggleIcon: {
-    fontSize: 16,
+  iconText: {
+    fontSize: 15,
   },
   actionButton: {
     paddingVertical: 8,
