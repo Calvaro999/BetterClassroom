@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { Classroom, Course, SeatAssignment, Gender } from '../types';
+import { Classroom, Course, SeatAssignment, Folder } from '../types';
 import { lightColors, darkColors, AppThemeColors } from '../theme/colors';
 
 interface AppContextType {
   classrooms: Classroom[];
   courses: Course[];
   assignments: SeatAssignment[];
+  folders: Folder[];
   isDarkMode: boolean;
   themeColors: AppThemeColors;
   toggleDarkMode: () => void;
@@ -15,6 +16,8 @@ interface AppContextType {
   addCourse: (course: Omit<Course, 'id' | 'createdAt'>) => void;
   updateCourse: (id: string, updates: Partial<Course>) => void;
   deleteCourse: (id: string) => void;
+  addFolder: (name: string) => void;
+  deleteFolder: (id: string) => void;
   assignSeat: (assignment: Omit<SeatAssignment, 'id' | 'assignedAt'>) => void;
   unassignSeatByPosition: (courseId: string, classroomId: string, seatNumber: number) => void;
   getClassroomById: (id: string) => Classroom | undefined;
@@ -22,6 +25,21 @@ interface AppContextType {
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
+
+const INITIAL_FOLDERS: Folder[] = [
+  {
+    id: 'folder-1',
+    name: 'Grado Superior DAM',
+    color: '#9F1239',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'folder-2',
+    name: 'Turno de Tarde',
+    color: '#881337',
+    createdAt: new Date().toISOString(),
+  },
+];
 
 const INITIAL_CLASSROOMS: Classroom[] = [
   {
@@ -54,6 +72,7 @@ const INITIAL_COURSES: Course[] = [
     teacher: 'Prof. Matías',
     schedule: 'Lunes y Miércoles 16:00',
     classroomId: 'room-1',
+    folderId: 'folder-1',
     color: '#9F1239',
     createdAt: new Date().toISOString(),
   },
@@ -64,6 +83,7 @@ const INITIAL_COURSES: Course[] = [
     teacher: 'Prof. Álvaro',
     schedule: 'Martes y Jueves 18:00',
     classroomId: 'room-2',
+    folderId: 'folder-1',
     color: '#BE123C',
     createdAt: new Date().toISOString(),
   },
@@ -108,6 +128,7 @@ const INITIAL_ASSIGNMENTS: SeatAssignment[] = [
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [classrooms, setClassrooms] = useState<Classroom[]>(INITIAL_CLASSROOMS);
   const [courses, setCourses] = useState<Course[]>(INITIAL_COURSES);
+  const [folders, setFolders] = useState<Folder[]>(INITIAL_FOLDERS);
   const [assignments, setAssignments] = useState<SeatAssignment[]>(INITIAL_ASSIGNMENTS);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
 
@@ -117,7 +138,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setIsDarkMode((prev) => !prev);
   };
 
-  // Gestión de Aulas (Aquí se edita el tamaño de aula y pupitres)
+  // Carpetas
+  const addFolder = (name: string) => {
+    const newFolder: Folder = {
+      id: `folder-${Date.now()}`,
+      name: name.trim(),
+      color: '#9F1239',
+      createdAt: new Date().toISOString(),
+    };
+    setFolders((prev) => [...prev, newFolder]);
+  };
+
+  const deleteFolder = (id: string) => {
+    setFolders((prev) => prev.filter((f) => f.id !== id));
+    setCourses((prev) =>
+      prev.map((c) => (c.folderId === id ? { ...c, folderId: undefined } : c))
+    );
+  };
+
+  // Gestión de Aulas
   const addClassroom = (classroomData: Omit<Classroom, 'id' | 'createdAt'>) => {
     const newClassroom: Classroom = {
       ...classroomData,
@@ -218,6 +257,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         classrooms,
         courses,
         assignments,
+        folders,
         isDarkMode,
         themeColors,
         toggleDarkMode,
@@ -227,6 +267,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         addCourse,
         updateCourse,
         deleteCourse,
+        addFolder,
+        deleteFolder,
         assignSeat,
         unassignSeatByPosition,
         getClassroomById,

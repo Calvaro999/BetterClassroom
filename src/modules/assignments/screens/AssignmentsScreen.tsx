@@ -9,7 +9,13 @@ import {
 } from 'react-native';
 import { useApp } from '../../../context/AppContext';
 import { Classroom, Course, SeatAssignment, Gender } from '../../../types';
-import { Header, Button, Badge } from '../../../components/common';
+import {
+  Header,
+  Button,
+  Badge,
+  FolderFilterBar,
+  TexturedBackground,
+} from '../../../components/common';
 import { SeatGrid } from '../../classrooms/components/SeatGrid';
 import { SeatAssignmentModal } from '../components/SeatAssignmentModal';
 import { OccupancySummary } from '../components/OccupancySummary';
@@ -25,16 +31,17 @@ export const AssignmentsScreen: React.FC<AssignmentsScreenProps> = ({
   const {
     courses,
     classrooms,
+    folders,
     assignments,
     assignSeat,
     unassignSeatByPosition,
     themeColors,
   } = useApp();
 
-  // Si se pasó un ID inicial lo selecciona, sino muestra la lista de cursos primero
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(
     initialCourseId || null
   );
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
 
   // Modo de vista dentro del curso: 'map' (Mapa visual) o 'students' (Lista visual de alumnos)
   const [viewMode, setViewMode] = useState<'map' | 'students'>('map');
@@ -96,7 +103,12 @@ export const AssignmentsScreen: React.FC<AssignmentsScreenProps> = ({
     );
   };
 
-  // VISTA 1: Selector de Curso inicial (No muestra el mapa de golpe)
+  // Filtrar cursos por carpeta
+  const displayedCourses = selectedFolderId
+    ? courses.filter((c) => c.folderId === selectedFolderId)
+    : courses;
+
+  // VISTA 1: Selector de Curso inicial con Carpetas
   if (!selectedCourse) {
     return (
       <View
@@ -105,19 +117,28 @@ export const AssignmentsScreen: React.FC<AssignmentsScreenProps> = ({
           { backgroundColor: themeColors.background },
         ]}
       >
+        <TexturedBackground />
+
         <Header
           title="Asignación de Clases"
           subtitle="Selecciona un curso para ver su aula y pupitres"
         />
 
+        {/* Filtro por carpetas */}
+        <FolderFilterBar
+          selectedFolderId={selectedFolderId}
+          onSelectFolder={setSelectedFolderId}
+        />
+
         <FlatList
-          data={courses}
+          data={displayedCourses}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           renderItem={({ item }) => {
             const linkedRoom = classrooms.find(
               (c) => c.id === item.classroomId
             );
+            const courseFolder = folders.find((f) => f.id === item.folderId);
             const courseAssignments = assignments.filter(
               (a) => a.courseId === item.id
             );
@@ -165,14 +186,23 @@ export const AssignmentsScreen: React.FC<AssignmentsScreenProps> = ({
                       { borderTopColor: themeColors.border },
                     ]}
                   >
-                    {linkedRoom ? (
-                      <Badge
-                        label={`🏛️ ${linkedRoom.name} (${linkedRoom.totalSeats} pupitres)`}
-                        variant="primary"
-                      />
-                    ) : (
-                      <Badge label="⚠️ Sin Aula Asignada" variant="neutral" />
-                    )}
+                    <View style={styles.badgesRow}>
+                      {linkedRoom ? (
+                        <Badge
+                          label={`🏛️ ${linkedRoom.name}`}
+                          variant="primary"
+                        />
+                      ) : (
+                        <Badge label="⚠️ Sin Aula" variant="neutral" />
+                      )}
+
+                      {courseFolder ? (
+                        <Badge
+                          label={`📁 ${courseFolder.name}`}
+                          variant="secondary"
+                        />
+                      ) : null}
+                    </View>
 
                     <Text
                       style={[
@@ -180,7 +210,7 @@ export const AssignmentsScreen: React.FC<AssignmentsScreenProps> = ({
                         { color: themeColors.textMuted },
                       ]}
                     >
-                      {courseAssignments.length} alumnos asignados
+                      {courseAssignments.length} alumnos
                     </Text>
                   </View>
                 </View>
@@ -191,10 +221,14 @@ export const AssignmentsScreen: React.FC<AssignmentsScreenProps> = ({
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>📚</Text>
               <Text style={[styles.emptyTitle, { color: themeColors.text }]}>
-                No hay cursos disponibles
+                {selectedFolderId
+                  ? 'No hay cursos en esta carpeta'
+                  : 'No hay cursos disponibles'}
               </Text>
               <Text style={[styles.emptyText, { color: themeColors.textMuted }]}>
-                Crea primero un curso en la pestaña "Cursos" para empezar.
+                {selectedFolderId
+                  ? 'Selecciona "Todas las Carpetas" o edita un curso para moverlo aquí.'
+                  : 'Crea primero un curso en la pestaña "Cursos" para empezar.'}
               </Text>
             </View>
           }
@@ -212,6 +246,8 @@ export const AssignmentsScreen: React.FC<AssignmentsScreenProps> = ({
           { backgroundColor: themeColors.background },
         ]}
       >
+        <TexturedBackground />
+
         <Header
           title={selectedCourse.name}
           subtitle="Curso sin aula física"
@@ -244,6 +280,8 @@ export const AssignmentsScreen: React.FC<AssignmentsScreenProps> = ({
         { backgroundColor: themeColors.background },
       ]}
     >
+      <TexturedBackground />
+
       <Header
         title={selectedCourse.name}
         subtitle={`Aula: ${selectedClassroom.name} (${selectedClassroom.code})`}
@@ -424,6 +462,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 10,
     borderTopWidth: 1,
+  },
+  badgesRow: {
+    flexDirection: 'row',
+    gap: 6,
   },
   occupancyBadge: {
     fontSize: 12,

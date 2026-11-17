@@ -8,7 +8,13 @@ import {
 } from 'react-native';
 import { useApp } from '../../../context/AppContext';
 import { Course } from '../../../types';
-import { Header, Button } from '../../../components/common';
+import {
+  Header,
+  Button,
+  FloatingActionButton,
+  FolderFilterBar,
+  TexturedBackground,
+} from '../../../components/common';
 import { CourseCard } from '../components/CourseCard';
 import { CourseModal } from '../components/CourseModal';
 
@@ -22,6 +28,7 @@ export const CoursesScreen: React.FC<CoursesScreenProps> = ({
   const {
     courses,
     classrooms,
+    folders,
     addCourse,
     updateCourse,
     deleteCourse,
@@ -30,6 +37,7 @@ export const CoursesScreen: React.FC<CoursesScreenProps> = ({
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
 
   const handleDelete = (course: Course) => {
     Alert.alert(
@@ -51,6 +59,11 @@ export const CoursesScreen: React.FC<CoursesScreenProps> = ({
     setModalVisible(true);
   };
 
+  // Filtrar cursos por carpeta seleccionada
+  const filteredCourses = selectedFolderId
+    ? courses.filter((c) => c.folderId === selectedFolderId)
+    : courses;
+
   return (
     <View
       style={[
@@ -58,18 +71,21 @@ export const CoursesScreen: React.FC<CoursesScreenProps> = ({
         { backgroundColor: themeColors.background },
       ]}
     >
+      <TexturedBackground />
+
       <Header
         title="Cursos y Materias"
-        subtitle={`${courses.length} materias registradas`}
-        rightActionText="+ Nuevo Curso"
-        onRightActionPress={() => {
-          setEditingCourse(null);
-          setModalVisible(true);
-        }}
+        subtitle={`${filteredCourses.length} de ${courses.length} materias`}
+      />
+
+      {/* Barra de Filtro de Carpetas */}
+      <FolderFilterBar
+        selectedFolderId={selectedFolderId}
+        onSelectFolder={setSelectedFolderId}
       />
 
       <FlatList
-        data={courses}
+        data={filteredCourses}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => {
@@ -95,20 +111,25 @@ export const CoursesScreen: React.FC<CoursesScreenProps> = ({
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>📚</Text>
             <Text style={[styles.emptyTitle, { color: themeColors.text }]}>
-              No hay cursos registrados
+              {selectedFolderId
+                ? 'No hay cursos en esta carpeta'
+                : 'No hay cursos registrados'}
             </Text>
             <Text style={[styles.emptyText, { color: themeColors.textMuted }]}>
-              Crea tu primer curso y vincúlalo a una de tus aulas.
+              {selectedFolderId
+                ? 'Edita un curso para asignarlo a esta carpeta o crea uno nuevo con el botón +'
+                : 'Toca el botón circular + para crear tu primer curso.'}
             </Text>
-            <Button
-              title="Crear Nuevo Curso"
-              onPress={() => {
-                setEditingCourse(null);
-                setModalVisible(true);
-              }}
-            />
           </View>
         }
+      />
+
+      {/* Botón Circular Flotante (FAB) con '+' */}
+      <FloatingActionButton
+        onPress={() => {
+          setEditingCourse(null);
+          setModalVisible(true);
+        }}
       />
 
       <CourseModal
@@ -134,10 +155,11 @@ export const CoursesScreen: React.FC<CoursesScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    position: 'relative',
   },
   listContent: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 90,
   },
   emptyContainer: {
     alignItems: 'center',

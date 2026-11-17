@@ -36,16 +36,17 @@ export const CourseModal: React.FC<CourseModalProps> = ({
   onSubmit,
   initialCourse,
 }) => {
-  const { themeColors } = useApp();
+  const { themeColors, folders } = useApp();
 
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [teacher, setTeacher] = useState('');
   const [schedule, setSchedule] = useState('');
   const [selectedClassroomId, setSelectedClassroomId] = useState<string | undefined>(undefined);
+  const [selectedFolderId, setSelectedFolderId] = useState<string | undefined>(undefined);
   const [selectedColor, setSelectedColor] = useState(PRESET_COLORS[0]);
 
-  // CORRECCIÓN CRUCIAL: Sincronizar todos los datos cuando se edita un curso
+  // Sincronizar todos los datos cuando se edita un curso
   useEffect(() => {
     if (initialCourse) {
       setName(initialCourse.name || '');
@@ -53,6 +54,7 @@ export const CourseModal: React.FC<CourseModalProps> = ({
       setTeacher(initialCourse.teacher || '');
       setSchedule(initialCourse.schedule || '');
       setSelectedClassroomId(initialCourse.classroomId);
+      setSelectedFolderId(initialCourse.folderId);
       setSelectedColor(initialCourse.color || PRESET_COLORS[0]);
     } else {
       setName('');
@@ -60,9 +62,10 @@ export const CourseModal: React.FC<CourseModalProps> = ({
       setTeacher('');
       setSchedule('');
       setSelectedClassroomId(classrooms[0] ? classrooms[0].id : undefined);
+      setSelectedFolderId(folders[0] ? folders[0].id : undefined);
       setSelectedColor(PRESET_COLORS[0]);
     }
-  }, [initialCourse, visible, classrooms]);
+  }, [initialCourse, visible, classrooms, folders]);
 
   const handleSave = () => {
     if (!name.trim()) {
@@ -84,6 +87,7 @@ export const CourseModal: React.FC<CourseModalProps> = ({
       teacher: teacher.trim(),
       schedule: schedule.trim() || 'Horario por definir',
       classroomId: selectedClassroomId,
+      folderId: selectedFolderId,
       color: selectedColor,
     });
 
@@ -144,6 +148,79 @@ export const CourseModal: React.FC<CourseModalProps> = ({
               value={schedule}
               onChangeText={setSchedule}
             />
+
+            {/* Selector de Carpeta Organizadora */}
+            <Text style={[styles.sectionLabel, { color: themeColors.text }]}>
+              📁 Carpeta Organizadora
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.folderRow}
+            >
+              <TouchableOpacity
+                style={[
+                  styles.folderOption,
+                  {
+                    backgroundColor:
+                      selectedFolderId === undefined
+                        ? themeColors.primaryLight
+                        : themeColors.surfaceVariant,
+                    borderColor:
+                      selectedFolderId === undefined
+                        ? themeColors.primary
+                        : themeColors.border,
+                  },
+                ]}
+                onPress={() => setSelectedFolderId(undefined)}
+              >
+                <Text
+                  style={{
+                    color:
+                      selectedFolderId === undefined
+                        ? themeColors.primaryDark
+                        : themeColors.text,
+                    fontWeight: selectedFolderId === undefined ? '700' : '500',
+                    fontSize: 12,
+                  }}
+                >
+                  Sin Carpeta
+                </Text>
+              </TouchableOpacity>
+
+              {folders.map((f) => {
+                const isSelected = selectedFolderId === f.id;
+                return (
+                  <TouchableOpacity
+                    key={f.id}
+                    style={[
+                      styles.folderOption,
+                      {
+                        backgroundColor: isSelected
+                          ? themeColors.primaryLight
+                          : themeColors.surfaceVariant,
+                        borderColor: isSelected
+                          ? themeColors.primary
+                          : themeColors.border,
+                      },
+                    ]}
+                    onPress={() => setSelectedFolderId(f.id)}
+                  >
+                    <Text
+                      style={{
+                        color: isSelected
+                          ? themeColors.primaryDark
+                          : themeColors.text,
+                        fontWeight: isSelected ? '700' : '500',
+                        fontSize: 12,
+                      }}
+                    >
+                      📁 {f.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
 
             <Text style={[styles.sectionLabel, { color: themeColors.text }]}>
               Aula Asignada
@@ -298,6 +375,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 8,
     marginTop: 4,
+  },
+  folderRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  folderOption: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    borderWidth: 1,
   },
   noClassroomsWarning: {
     padding: 12,

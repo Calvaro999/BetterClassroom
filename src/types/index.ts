@@ -1,3 +1,10 @@
+export interface Folder {
+  id: string;
+  name: string;
+  color?: string;
+  createdAt: string;
+}
+
 export interface Classroom {
   id: string;
   name: string;             // Ej: "Aula Magna"
@@ -16,6 +23,7 @@ export interface Course {
   teacher: string;          // Ej: "Prof. Matías"
   schedule: string;         // Ej: "Lunes 16:00"
   classroomId?: string;     // Aula vinculada
+  folderId?: string;        // Carpeta organizadora
   color: string;
   createdAt: string;
 }
