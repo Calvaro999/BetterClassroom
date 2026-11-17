@@ -1,11 +1,12 @@
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
-import { Classroom } from '../../../types';
+import { Classroom, Course } from '../../../types';
 import { useApp } from '../../../context/AppContext';
 import { Badge } from '../../../components/common';
 
 interface ClassroomCardProps {
   classroom: Classroom;
+  assignedCourses?: Course[];
   onPress: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
@@ -13,6 +14,7 @@ interface ClassroomCardProps {
 
 export const ClassroomCard: React.FC<ClassroomCardProps> = ({
   classroom,
+  assignedCourses = [],
   onPress,
   onEdit,
   onDelete,
@@ -39,10 +41,57 @@ export const ClassroomCard: React.FC<ClassroomCardProps> = ({
               {classroom.name}
             </Text>
             <Text style={[styles.code, { color: themeColors.textMuted }]}>
-              {classroom.code}
+              {classroom.code} • {classroom.rows} Filas × {classroom.columns} Columnas
             </Text>
           </View>
           <Badge label={`${classroom.totalSeats} Pupitres`} variant="primary" />
+        </View>
+
+        {/* Sección: Clases / Cursos asignados a esta aula física */}
+        <View
+          style={[
+            styles.coursesSection,
+            { backgroundColor: themeColors.surfaceVariant },
+          ]}
+        >
+          <Text style={[styles.coursesLabel, { color: themeColors.textMuted }]}>
+            📚 Clases en esta aula ({assignedCourses.length}):
+          </Text>
+          {assignedCourses.length > 0 ? (
+            <View style={styles.coursesChipsRow}>
+              {assignedCourses.map((course) => (
+                <View
+                  key={course.id}
+                  style={[
+                    styles.courseChip,
+                    {
+                      backgroundColor: themeColors.surface,
+                      borderColor: course.color,
+                    },
+                  ]}
+                >
+                  <View
+                    style={[styles.chipDot, { backgroundColor: course.color }]}
+                  />
+                  <Text
+                    style={[styles.courseChipText, { color: themeColors.text }]}
+                    numberOfLines={1}
+                  >
+                    {course.code} • {course.name}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text
+              style={[
+                styles.noCoursesAssigned,
+                { color: themeColors.textLight },
+              ]}
+            >
+              Ningún curso asignado a esta aula todavía.
+            </Text>
+          )}
         </View>
 
         <View
@@ -51,11 +100,9 @@ export const ClassroomCard: React.FC<ClassroomCardProps> = ({
             { borderTopColor: themeColors.border },
           ]}
         >
-          <View style={styles.specs}>
-            <Text style={[styles.specText, { color: themeColors.textMuted }]}>
-              📐 {classroom.rows} Filas × {classroom.columns} Columnas
-            </Text>
-          </View>
+          <Text style={[styles.tapHint, { color: themeColors.primary }]}>
+            👁️ Toca para ver distribución de pupitres
+          </Text>
 
           <View style={styles.actions}>
             {onEdit ? (
@@ -112,7 +159,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   titleInfo: {
     flex: 1,
@@ -124,23 +171,58 @@ const styles = StyleSheet.create({
   },
   code: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '500',
     marginTop: 2,
+  },
+  coursesSection: {
+    padding: 10,
+    borderRadius: 8,
+    marginVertical: 8,
+  },
+  coursesLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+  },
+  coursesChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  courseChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    maxWidth: '100%',
+  },
+  chipDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
+  },
+  courseChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  noCoursesAssigned: {
+    fontSize: 12,
+    fontStyle: 'italic',
   },
   footerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 10,
+    paddingTop: 8,
     borderTopWidth: 1,
   },
-  specs: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  specText: {
-    fontSize: 12,
-    fontWeight: '500',
+  tapHint: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   actions: {
     flexDirection: 'row',

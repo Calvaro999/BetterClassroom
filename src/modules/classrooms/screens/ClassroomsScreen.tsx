@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useApp } from '../../../context/AppContext';
 import { Classroom } from '../../../types';
-import { Header, Button } from '../../../components/common';
+import { Header, Button, FloatingActionButton, TexturedBackground } from '../../../components/common';
 import { ClassroomCard } from '../components/ClassroomCard';
 import { ClassroomModal } from '../components/ClassroomModal';
 import { SeatGrid } from '../components/SeatGrid';
@@ -18,6 +18,7 @@ import { SeatGrid } from '../components/SeatGrid';
 export const ClassroomsScreen: React.FC = () => {
   const {
     classrooms,
+    courses,
     addClassroom,
     updateClassroom,
     deleteClassroom,
@@ -60,28 +61,30 @@ export const ClassroomsScreen: React.FC = () => {
         { backgroundColor: themeColors.background },
       ]}
     >
+      {/* Textura de fondo con siluetas de pizarras y sillas */}
+      <TexturedBackground />
+
       <Header
         title="Aulas y Salones"
         subtitle={`${classrooms.length} aulas configuradas`}
-        rightActionText="+ Nueva Aula"
-        onRightActionPress={() => {
-          setEditingClassroom(null);
-          setModalVisible(true);
-        }}
       />
 
       <FlatList
         data={classrooms}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <ClassroomCard
-            classroom={item}
-            onPress={() => setViewingClassroom(item)}
-            onEdit={() => handleEdit(item)}
-            onDelete={() => handleDelete(item)}
-          />
-        )}
+        renderItem={({ item }) => {
+          const assignedCourses = courses.filter((c) => c.classroomId === item.id);
+          return (
+            <ClassroomCard
+              classroom={item}
+              assignedCourses={assignedCourses}
+              onPress={() => setViewingClassroom(item)}
+              onEdit={() => handleEdit(item)}
+              onDelete={() => handleDelete(item)}
+            />
+          );
+        }}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>🏛️</Text>
@@ -89,17 +92,18 @@ export const ClassroomsScreen: React.FC = () => {
               No hay aulas creadas
             </Text>
             <Text style={[styles.emptyText, { color: themeColors.textMuted }]}>
-              Crea tu primera aula configurando el tamaño y número de pupitres.
+              Toca el botón circular '+' para crear tu primera aula y sus pupitres.
             </Text>
-            <Button
-              title="Crear Nueva Aula"
-              onPress={() => {
-                setEditingClassroom(null);
-                setModalVisible(true);
-              }}
-            />
           </View>
         }
+      />
+
+      {/* Botón Circular Flotante (FAB) con un '+' */}
+      <FloatingActionButton
+        onPress={() => {
+          setEditingClassroom(null);
+          setModalVisible(true);
+        }}
       />
 
       {/* Modal para crear o editar aula y tamaño de pupitres */}
@@ -185,10 +189,11 @@ export const ClassroomsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    position: 'relative',
   },
   listContent: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 90, // Espacio suficiente para no tapar el último elemento con el FAB
   },
   emptyContainer: {
     alignItems: 'center',
