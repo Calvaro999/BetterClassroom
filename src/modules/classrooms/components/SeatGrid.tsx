@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   StyleSheet,
   Text,
   View,
   TouchableOpacity,
   ScrollView,
+  Animated,
 } from 'react-native';
 import { Classroom, SeatAssignment } from '../../../types';
-import { colors } from '../../../theme';
+import { useApp } from '../../../context/AppContext';
 
 interface SeatGridProps {
   classroom: Classroom;
@@ -17,6 +18,117 @@ interface SeatGridProps {
   readOnly?: boolean;
 }
 
+const AnimatedDesk: React.FC<{
+  seatNum: number;
+  row: number;
+  col: number;
+  assignment?: SeatAssignment;
+  isSelected: boolean;
+  readOnly: boolean;
+  onPress: () => void;
+}> = ({ seatNum, assignment, isSelected, readOnly, onPress }) => {
+  const { themeColors } = useApp();
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.9,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      friction: 4,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const isOccupied = Boolean(assignment);
+
+  return (
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <TouchableOpacity
+        style={[
+          styles.deskContainer,
+          {
+            backgroundColor: isSelected
+              ? themeColors.primaryLight
+              : isOccupied
+              ? themeColors.dangerLight
+              : themeColors.surfaceVariant,
+            borderColor: isSelected
+              ? themeColors.primary
+              : isOccupied
+              ? themeColors.danger
+              : themeColors.border,
+          },
+        ]}
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        disabled={readOnly}
+        activeOpacity={0.8}
+      >
+        {/* Respaldo de la silla del pupitre */}
+        <View
+          style={[
+            styles.chairBack,
+            {
+              backgroundColor: isSelected
+                ? themeColors.primary
+                : isOccupied
+                ? themeColors.danger
+                : themeColors.deskChair,
+            },
+          ]}
+        />
+
+        {/* Superficie del pupitre */}
+        <View style={styles.deskTop}>
+          <Text
+            style={[
+              styles.seatNumber,
+              {
+                color: isSelected
+                  ? themeColors.primaryDark
+                  : isOccupied
+                  ? themeColors.danger
+                  : themeColors.textMuted,
+              },
+            ]}
+          >
+            #{seatNum}
+          </Text>
+
+          {isOccupied && assignment ? (
+            <View style={styles.studentBadge}>
+              <Text style={styles.genderIcon}>
+                {assignment.gender === 'Femenino' ? '👩' : '👨'}
+              </Text>
+              <Text
+                style={[
+                  styles.studentNameText,
+                  { color: themeColors.danger },
+                ]}
+                numberOfLines={1}
+              >
+                {assignment.studentName.split(' ')[0]}
+              </Text>
+            </View>
+          ) : (
+            <Text style={[styles.freeLabel, { color: themeColors.textLight }]}>
+              Libre
+            </Text>
+          )}
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
+
 export const SeatGrid: React.FC<SeatGridProps> = ({
   classroom,
   assignments = [],
@@ -24,15 +136,15 @@ export const SeatGrid: React.FC<SeatGridProps> = ({
   onSelectSeat,
   readOnly = false,
 }) => {
+  const { themeColors } = useApp();
   const { rows, columns } = classroom;
 
-  // Mapa de asignaciones por número de asiento para acceso O(1)
   const assignmentMap = new Map<number, SeatAssignment>();
   assignments.forEach((a) => {
     assignmentMap.set(a.seatNumber, a);
   });
 
-  const renderGrid = () => {
+  const renderClassroomLayout = () => {
     const gridRows = [];
 
     for (let r = 1; r <= rows; r++) {
@@ -40,58 +152,41 @@ export const SeatGrid: React.FC<SeatGridProps> = ({
       for (let c = 1; c <= columns; c++) {
         const seatNum = (r - 1) * columns + c;
         const assignment = assignmentMap.get(seatNum);
-        const isOccupied = Boolean(assignment);
         const isSelected = selectedSeatNumber === seatNum;
 
-        let seatBg = colors.surfaceVariant;
-        let borderColor = colors.border;
-        let textColor = colors.text;
-
-        if (isSelected) {
-          seatBg = colors.primary;
-          borderColor = colors.primaryDark;
-          textColor = colors.white;
-        } else if (isOccupied) {
-          seatBg = colors.dangerLight;
-          borderColor = colors.danger;
-          textColor = colors.danger;
-        }
-
         rowSeats.push(
-          <TouchableOpacity
-            key={`seat-${seatNum}`}
-            style={[
-              styles.seat,
-              { backgroundColor: seatBg, borderColor },
-            ]}
+          <AnimatedDesk
+            key={`desk-${seatNum}`}
+            seatNum={seatNum}
+            row={r}
+            col={c}
+            assignment={assignment}
+            isSelected={isSelected}
+            readOnly={readOnly}
             onPress={() => {
-              if (!readOnly && onSelectSeat) {
+              if (onSelectSeat) {
                 onSelectSeat(seatNum, r, c, assignment);
               }
             }}
-            disabled={readOnly}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.seatNumber, { color: textColor }]}>
-              {seatNum}
-            </Text>
-            {isOccupied && (
-              <Text
-                style={styles.studentInitial}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {assignment?.studentName?.charAt(0) || '●'}
-              </Text>
-            )}
-          </TouchableOpacity>
+          />
         );
       }
 
       gridRows.push(
-        <View key={`row-${r}`} style={styles.rowContainer}>
-          <Text style={styles.rowLabel}>F{r}</Text>
-          <View style={styles.seatsRow}>{rowSeats}</View>
+        <View key={`row-${r}`} style={styles.rowWrapper}>
+          <View
+            style={[
+              styles.rowIndicator,
+              { backgroundColor: themeColors.surfaceVariant },
+            ]}
+          >
+            <Text
+              style={[styles.rowIndicatorText, { color: themeColors.textMuted }]}
+            >
+              F{r}
+            </Text>
+          </View>
+          <View style={styles.rowDesks}>{rowSeats}</View>
         </View>
       );
     }
@@ -100,31 +195,101 @@ export const SeatGrid: React.FC<SeatGridProps> = ({
   };
 
   return (
-    <View style={styles.container}>
-      {/* Indicador de Pizarra / Frente del aula */}
-      <View style={styles.boardIndicator}>
-        <View style={styles.boardLine} />
-        <Text style={styles.boardText}>PIZARRA / PROFESOR</Text>
-        <View style={styles.boardLine} />
+    <View
+      style={[
+        styles.classroomRoom,
+        {
+          backgroundColor: themeColors.surfaceCard,
+          borderColor: themeColors.border,
+        },
+      ]}
+    >
+      {/* Pizarra tradicional realista */}
+      <View style={styles.blackboardFrame}>
+        <View style={styles.blackboard}>
+          <Text style={styles.blackboardText}>📝 PIZARRA</Text>
+        </View>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View style={styles.gridWrapper}>{renderGrid()}</View>
+      {/* Mesa del Profesor */}
+      <View style={styles.teacherZone}>
+        <View
+          style={[
+            styles.teacherDesk,
+            {
+              backgroundColor: themeColors.surfaceVariant,
+              borderColor: themeColors.border,
+            },
+          ]}
+        >
+          <Text style={styles.teacherLaptop}>💻</Text>
+          <Text
+            style={[styles.teacherDeskText, { color: themeColors.textMuted }]}
+          >
+            Mesa del Profesor
+          </Text>
+        </View>
+      </View>
+
+      {/* Distribución de pupitres de los alumnos */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.scrollWrapper}
+      >
+        <View style={styles.roomLayout}>{renderClassroomLayout()}</View>
       </ScrollView>
 
-      {/* Leyenda explicativa */}
-      <View style={styles.legendContainer}>
+      {/* Leyenda limpia */}
+      <View
+        style={[
+          styles.legend,
+          { borderTopColor: themeColors.border },
+        ]}
+      >
         <View style={styles.legendItem}>
-          <View style={[styles.legendBox, { backgroundColor: colors.surfaceVariant, borderColor: colors.border }]} />
-          <Text style={styles.legendText}>Libre</Text>
+          <View
+            style={[
+              styles.legendDot,
+              {
+                backgroundColor: themeColors.surfaceVariant,
+                borderColor: themeColors.border,
+              },
+            ]}
+          />
+          <Text style={[styles.legendLabel, { color: themeColors.textMuted }]}>
+            Libre
+          </Text>
         </View>
+
         <View style={styles.legendItem}>
-          <View style={[styles.legendBox, { backgroundColor: colors.dangerLight, borderColor: colors.danger }]} />
-          <Text style={styles.legendText}>Ocupado</Text>
+          <View
+            style={[
+              styles.legendDot,
+              {
+                backgroundColor: themeColors.dangerLight,
+                borderColor: themeColors.danger,
+              },
+            ]}
+          />
+          <Text style={[styles.legendLabel, { color: themeColors.textMuted }]}>
+            Ocupado
+          </Text>
         </View>
+
         <View style={styles.legendItem}>
-          <View style={[styles.legendBox, { backgroundColor: colors.primary, borderColor: colors.primaryDark }]} />
-          <Text style={styles.legendText}>Seleccionado</Text>
+          <View
+            style={[
+              styles.legendDot,
+              {
+                backgroundColor: themeColors.primaryLight,
+                borderColor: themeColors.primary,
+              },
+            ]}
+          />
+          <Text style={[styles.legendLabel, { color: themeColors.textMuted }]}>
+            Seleccionado
+          </Text>
         </View>
       </View>
     </View>
@@ -132,90 +297,144 @@ export const SeatGrid: React.FC<SeatGridProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: colors.surface,
-    padding: 16,
-    borderRadius: 12,
+  classroomRoom: {
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: colors.border,
+    padding: 16,
+    overflow: 'hidden',
   },
-  boardIndicator: {
-    flexDirection: 'row',
+  blackboardFrame: {
+    backgroundColor: '#78350F', // Madera
+    padding: 4,
+    borderRadius: 8,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+  },
+  blackboard: {
+    backgroundColor: '#064E3B', // Verde pizarra clásico
+    paddingVertical: 10,
+    borderRadius: 5,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
   },
-  boardLine: {
-    flex: 1,
-    height: 2,
-    backgroundColor: colors.borderDark,
-  },
-  boardText: {
-    paddingHorizontal: 12,
-    fontSize: 11,
+  blackboardText: {
+    color: '#ECFDF5',
     fontWeight: '700',
-    color: colors.textMuted,
-    letterSpacing: 1,
+    fontSize: 12,
+    letterSpacing: 2,
   },
-  gridWrapper: {
-    alignSelf: 'center',
-    paddingVertical: 8,
+  teacherZone: {
+    alignItems: 'center',
+    marginBottom: 18,
   },
-  rowContainer: {
+  teacherDesk: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 6,
   },
-  rowLabel: {
-    width: 24,
+  teacherLaptop: {
+    fontSize: 14,
+  },
+  teacherDeskText: {
     fontSize: 11,
     fontWeight: '600',
-    color: colors.textMuted,
   },
-  seatsRow: {
+  scrollWrapper: {
+    paddingVertical: 4,
+    alignItems: 'center',
+  },
+  roomLayout: {
+    gap: 12,
+  },
+  rowWrapper: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
-  seat: {
-    width: 38,
-    height: 38,
-    borderRadius: 8,
-    borderWidth: 1.5,
+  rowIndicator: {
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    borderRadius: 4,
+    minWidth: 26,
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  seatNumber: {
-    fontSize: 12,
+  rowIndicatorText: {
+    fontSize: 10,
     fontWeight: '700',
   },
-  studentInitial: {
-    fontSize: 9,
-    fontWeight: '600',
-    color: colors.danger,
-    marginTop: -2,
+  rowDesks: {
+    flexDirection: 'row',
+    gap: 10,
   },
-  legendContainer: {
+  deskContainer: {
+    width: 62,
+    height: 56,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    padding: 4,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  chairBack: {
+    width: 24,
+    height: 4,
+    borderRadius: 2,
+  },
+  deskTop: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  seatNumber: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  studentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    maxWidth: '100%',
+  },
+  genderIcon: {
+    fontSize: 10,
+  },
+  studentNameText: {
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  freeLabel: {
+    fontSize: 9,
+    fontWeight: '500',
+  },
+  legend: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 20,
-    marginTop: 14,
+    gap: 18,
+    marginTop: 16,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
   },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  legendBox: {
-    width: 14,
-    height: 14,
-    borderRadius: 4,
-    borderWidth: 1,
+  legendDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1.5,
   },
-  legendText: {
-    fontSize: 12,
-    color: colors.textMuted,
+  legendLabel: {
+    fontSize: 11,
+    fontWeight: '500',
   },
 });

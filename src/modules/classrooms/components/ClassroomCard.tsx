@@ -1,23 +1,33 @@
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { Classroom } from '../../../types';
-import { colors } from '../../../theme';
+import { useApp } from '../../../context/AppContext';
 import { Badge } from '../../../components/common';
 
 interface ClassroomCardProps {
   classroom: Classroom;
   onPress: () => void;
+  onEdit?: () => void;
   onDelete?: () => void;
 }
 
 export const ClassroomCard: React.FC<ClassroomCardProps> = ({
   classroom,
   onPress,
+  onEdit,
   onDelete,
 }) => {
+  const { themeColors } = useApp();
+
   return (
     <TouchableOpacity
-      style={styles.card}
+      style={[
+        styles.card,
+        {
+          backgroundColor: themeColors.surface,
+          borderColor: themeColors.border,
+        },
+      ]}
       onPress={onPress}
       activeOpacity={0.8}
     >
@@ -25,34 +35,53 @@ export const ClassroomCard: React.FC<ClassroomCardProps> = ({
       <View style={styles.content}>
         <View style={styles.headerRow}>
           <View style={styles.titleInfo}>
-            <Text style={styles.name}>{classroom.name}</Text>
-            <Text style={styles.code}>Cód: {classroom.code}</Text>
+            <Text style={[styles.name, { color: themeColors.text }]}>
+              {classroom.name}
+            </Text>
+            <Text style={[styles.code, { color: themeColors.textMuted }]}>
+              {classroom.code}
+            </Text>
           </View>
-          <Badge label={`${classroom.totalSeats} Asientos`} variant="primary" />
+          <Badge label={`${classroom.totalSeats} Pupitres`} variant="primary" />
         </View>
 
-        {classroom.description ? (
-          <Text style={styles.description} numberOfLines={2}>
-            {classroom.description}
-          </Text>
-        ) : null}
-
-        <View style={styles.footerRow}>
+        <View
+          style={[
+            styles.footerRow,
+            { borderTopColor: themeColors.border },
+          ]}
+        >
           <View style={styles.specs}>
-            <Text style={styles.specText}>
+            <Text style={[styles.specText, { color: themeColors.textMuted }]}>
               📐 {classroom.rows} Filas × {classroom.columns} Columnas
             </Text>
           </View>
 
-          {onDelete ? (
-            <TouchableOpacity
-              style={styles.deleteButton}
-              onPress={onDelete}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.deleteText}>Eliminar</Text>
-            </TouchableOpacity>
-          ) : null}
+          <View style={styles.actions}>
+            {onEdit ? (
+              <TouchableOpacity
+                style={styles.actionBtn}
+                onPress={onEdit}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.editText, { color: themeColors.primary }]}>
+                  Editar
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+
+            {onDelete ? (
+              <TouchableOpacity
+                style={styles.actionBtn}
+                onPress={onDelete}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.deleteText, { color: themeColors.danger }]}>
+                  Eliminar
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
         </View>
       </View>
     </TouchableOpacity>
@@ -61,11 +90,9 @@ export const ClassroomCard: React.FC<ClassroomCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: 14,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: colors.border,
     flexDirection: 'row',
     overflow: 'hidden',
     shadowColor: '#000',
@@ -85,7 +112,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 6,
+    marginBottom: 10,
   },
   titleInfo: {
     flex: 1,
@@ -94,27 +121,18 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.text,
   },
   code: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.textMuted,
     marginTop: 2,
-  },
-  description: {
-    fontSize: 13,
-    color: colors.textMuted,
-    marginBottom: 10,
-    lineHeight: 18,
   },
   footerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 8,
+    paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
   },
   specs: {
     flexDirection: 'row',
@@ -122,16 +140,22 @@ const styles = StyleSheet.create({
   },
   specText: {
     fontSize: 12,
-    color: colors.textMuted,
     fontWeight: '500',
   },
-  deleteButton: {
+  actions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionBtn: {
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
+  editText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
   deleteText: {
     fontSize: 12,
-    color: colors.danger,
     fontWeight: '600',
   },
 });
