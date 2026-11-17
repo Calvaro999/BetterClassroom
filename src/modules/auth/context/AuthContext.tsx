@@ -115,11 +115,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           password,
         });
         if (error) return { error: error.message };
-        if (data.user) {
+        if (data.session) {
           setUser(data.user);
           setSession(data.session);
           setIsGuest(false);
           await AsyncStorage.removeItem(GUEST_STORAGE_KEY);
+        } else if (data.user) {
+          // El usuario se creó en Supabase, pero requiere confirmación de email
+          setUser(null);
+          setSession(null);
         }
         return {};
       } else {

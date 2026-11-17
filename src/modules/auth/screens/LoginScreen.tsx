@@ -40,14 +40,21 @@ export const LoginScreen: React.FC = () => {
         setErrorMessage(error);
       } else {
         Alert.alert(
-          'Registro Exitoso',
-          'Tu cuenta ha sido creada. ¡Bienvenido a BetterClassroom!'
+          '¡Cuenta creada!',
+          'Si tienes activa la confirmación por correo en Supabase, revisa tu email para confirmar la cuenta antes de iniciar sesión. Si la desactivaste, ya puedes pulsar en "Iniciar Sesión".'
         );
+        setIsRegistering(false);
       }
     } else {
       const { error } = await signIn(email.trim(), password);
       if (error) {
-        setErrorMessage(error);
+        if (error.includes('Email not confirmed')) {
+          setErrorMessage('Tu correo aún no está confirmado. Revisa tu bandeja de entrada o desactiva "Confirm email" en Supabase.');
+        } else if (error.includes('Invalid login credentials')) {
+          setErrorMessage('Correo o contraseña incorrectos.');
+        } else {
+          setErrorMessage(error);
+        }
       }
     }
   };
