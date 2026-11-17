@@ -1,5 +1,11 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, SafeAreaView, Platform } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  SafeAreaView,
+  Platform,
+  StatusBar as RNStatusBar,
+} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { AppProvider, useApp } from './src/context/AppContext';
 import { ClassroomsScreen } from './src/modules/classrooms';
@@ -7,22 +13,43 @@ import { CoursesScreen } from './src/modules/courses';
 import { AssignmentsScreen } from './src/modules/assignments';
 import { TabBar } from './src/components/common';
 import { ActiveTab } from './src/types';
-import { colors } from './src/theme';
 
 const MainApp: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('classrooms');
   const [selectedCourseForAssignment, setSelectedCourseForAssignment] = useState<string | undefined>(undefined);
-  const { classrooms, courses, assignments } = useApp();
+  const { classrooms, courses, assignments, themeColors, isDarkMode } = useApp();
 
   const handleNavigateToAssignments = (courseId: string) => {
     setSelectedCourseForAssignment(courseId);
     setActiveTab('assignments');
   };
 
+  // Limitador superior seguro para evitar que la barra de estado corte el contenido
+  const topSafePadding =
+    Platform.OS === 'android'
+      ? (RNStatusBar.currentHeight ? RNStatusBar.currentHeight + 6 : 36)
+      : Platform.OS === 'ios'
+      ? 44
+      : 10;
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="dark" />
-      <View style={styles.contentContainer}>
+    <SafeAreaView
+      style={[
+        styles.safeArea,
+        {
+          backgroundColor: themeColors.surface,
+          paddingTop: topSafePadding,
+        },
+      ]}
+    >
+      <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+
+      <View
+        style={[
+          styles.contentContainer,
+          { backgroundColor: themeColors.background },
+        ]}
+      >
         {activeTab === 'classrooms' && <ClassroomsScreen />}
         {activeTab === 'courses' && (
           <CoursesScreen onNavigateToAssignments={handleNavigateToAssignments} />
@@ -56,10 +83,8 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.surface,
   },
   contentContainer: {
     flex: 1,
-    backgroundColor: colors.background,
   },
 });

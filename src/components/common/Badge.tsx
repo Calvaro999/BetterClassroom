@@ -1,29 +1,29 @@
 import React from 'react';
-import { StyleSheet, Text, View, ViewStyle, TextStyle } from 'react-native';
-import { colors } from '../../theme';
+import { StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { useApp } from '../../context/AppContext';
 
 interface BadgeProps {
   label: string;
-  variant?: 'primary' | 'secondary' | 'success' | 'warning' | 'danger' | 'neutral';
+  variant?: 'primary' | 'secondary' | 'success' | 'danger' | 'neutral';
   style?: ViewStyle;
 }
 
 export const Badge: React.FC<BadgeProps> = ({ label, variant = 'primary', style }) => {
+  const { themeColors } = useApp();
+
   const getColors = () => {
     switch (variant) {
       case 'primary':
-        return { bg: colors.primaryLight, text: colors.primaryDark };
+        return { bg: themeColors.primaryLight, text: themeColors.primaryDark };
       case 'secondary':
-        return { bg: colors.secondaryLight, text: colors.secondary };
+        return { bg: themeColors.surfaceVariant, text: themeColors.primary };
       case 'success':
-        return { bg: colors.successLight, text: colors.success };
-      case 'warning':
-        return { bg: colors.warningLight, text: colors.warning };
+        return { bg: themeColors.successLight, text: themeColors.success };
       case 'danger':
-        return { bg: colors.dangerLight, text: colors.danger };
+        return { bg: themeColors.dangerLight, text: themeColors.danger };
       case 'neutral':
       default:
-        return { bg: colors.surfaceVariant, text: colors.textMuted };
+        return { bg: themeColors.surfaceVariant, text: themeColors.textMuted };
     }
   };
 
@@ -47,6 +47,5 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.3,
-    textTransform: 'uppercase',
   },
 });

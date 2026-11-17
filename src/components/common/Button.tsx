@@ -7,7 +7,7 @@ import {
   ViewStyle,
   TextStyle,
 } from 'react-native';
-import { colors } from '../../theme';
+import { useApp } from '../../context/AppContext';
 
 interface ButtonProps {
   title: string;
@@ -32,13 +32,21 @@ export const Button: React.FC<ButtonProps> = ({
   textStyle,
   icon,
 }) => {
+  const { themeColors } = useApp();
+
   const getContainerStyle = () => {
     const base: ViewStyle[] = [styles.button, styles[`size_${size}`]];
-    if (variant === 'primary') base.push(styles.btnPrimary);
-    if (variant === 'secondary') base.push(styles.btnSecondary);
-    if (variant === 'danger') base.push(styles.btnDanger);
-    if (variant === 'outline') base.push(styles.btnOutline);
-    if (variant === 'success') base.push(styles.btnSuccess);
+    if (variant === 'primary') base.push({ backgroundColor: themeColors.primary });
+    if (variant === 'secondary') base.push({ backgroundColor: themeColors.primaryDark });
+    if (variant === 'danger') base.push({ backgroundColor: themeColors.danger });
+    if (variant === 'success') base.push({ backgroundColor: themeColors.success });
+    if (variant === 'outline') {
+      base.push({
+        backgroundColor: 'transparent',
+        borderWidth: 1.5,
+        borderColor: themeColors.primary,
+      });
+    }
     if (disabled || loading) base.push(styles.btnDisabled);
     if (style) base.push(style);
     return base;
@@ -46,9 +54,9 @@ export const Button: React.FC<ButtonProps> = ({
 
   const getTextStyle = () => {
     const base: TextStyle[] = [styles.text, styles[`textSize_${size}`]];
-    if (variant === 'outline') base.push(styles.textOutline);
-    else base.push(styles.textWhite);
-    if (disabled) base.push(styles.textDisabled);
+    if (variant === 'outline') base.push({ color: themeColors.primary });
+    else base.push({ color: '#FFFFFF' });
+    if (disabled) base.push({ color: themeColors.textMuted });
     if (textStyle) base.push(textStyle);
     return base;
   };
@@ -63,7 +71,7 @@ export const Button: React.FC<ButtonProps> = ({
       {loading ? (
         <ActivityIndicator
           size="small"
-          color={variant === 'outline' ? colors.primary : colors.white}
+          color={variant === 'outline' ? themeColors.primary : '#FFFFFF'}
         />
       ) : (
         <>
@@ -95,23 +103,6 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 24,
   },
-  btnPrimary: {
-    backgroundColor: colors.primary,
-  },
-  btnSecondary: {
-    backgroundColor: colors.secondary,
-  },
-  btnDanger: {
-    backgroundColor: colors.danger,
-  },
-  btnSuccess: {
-    backgroundColor: colors.success,
-  },
-  btnOutline: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-  },
   btnDisabled: {
     opacity: 0.5,
   },
@@ -126,14 +117,5 @@ const styles = StyleSheet.create({
   },
   textSize_lg: {
     fontSize: 17,
-  },
-  textWhite: {
-    color: colors.white,
-  },
-  textOutline: {
-    color: colors.primary,
-  },
-  textDisabled: {
-    color: colors.textMuted,
   },
 });

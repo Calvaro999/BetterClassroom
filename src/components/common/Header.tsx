@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
-import { colors } from '../../theme';
+import { useApp } from '../../context/AppContext';
 
 interface HeaderProps {
   title: string;
@@ -15,21 +15,58 @@ export const Header: React.FC<HeaderProps> = ({
   rightActionText,
   onRightActionPress,
 }) => {
+  const { themeColors, isDarkMode, toggleDarkMode } = useApp();
+
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: themeColors.surface,
+          borderBottomColor: themeColors.border,
+        },
+      ]}
+    >
       <View style={styles.textContainer}>
-        <Text style={styles.title}>{title}</Text>
-        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+        <Text style={[styles.title, { color: themeColors.text }]}>{title}</Text>
+        {subtitle ? (
+          <Text style={[styles.subtitle, { color: themeColors.textMuted }]}>
+            {subtitle}
+          </Text>
+        ) : null}
       </View>
-      {rightActionText && onRightActionPress ? (
+
+      <View style={styles.actionsRow}>
+        {/* Botón de alternar Modo Oscuro / Claro */}
         <TouchableOpacity
-          style={styles.actionButton}
-          onPress={onRightActionPress}
-          activeOpacity={0.8}
+          style={[
+            styles.themeToggleBtn,
+            {
+              backgroundColor: themeColors.surfaceVariant,
+              borderColor: themeColors.border,
+            },
+          ]}
+          onPress={toggleDarkMode}
+          activeOpacity={0.7}
         >
-          <Text style={styles.actionText}>{rightActionText}</Text>
+          <Text style={styles.themeToggleIcon}>
+            {isDarkMode ? '☀️' : '🌙'}
+          </Text>
         </TouchableOpacity>
-      ) : null}
+
+        {rightActionText && onRightActionPress ? (
+          <TouchableOpacity
+            style={[
+              styles.actionButton,
+              { backgroundColor: themeColors.primary },
+            ]}
+            onPress={onRightActionPress}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.actionText}>{rightActionText}</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
     </View>
   );
 };
@@ -38,10 +75,8 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 12,
-    backgroundColor: colors.surface,
+    paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -50,25 +85,37 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
-    color: colors.text,
-    letterSpacing: -0.5,
+    letterSpacing: -0.4,
   },
   subtitle: {
-    fontSize: 13,
-    color: colors.textMuted,
+    fontSize: 12,
     marginTop: 2,
   },
+  actionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  themeToggleBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  themeToggleIcon: {
+    fontSize: 16,
+  },
   actionButton: {
-    backgroundColor: colors.primary,
     paddingVertical: 8,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     borderRadius: 8,
-    marginLeft: 12,
   },
   actionText: {
-    color: colors.white,
+    color: '#FFFFFF',
     fontWeight: '600',
     fontSize: 13,
   },
